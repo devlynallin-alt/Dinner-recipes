@@ -19,46 +19,44 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-bordered mb-0">
-            <thead>
-                <tr>
-                    <th style="width: 80px;"></th>
-                    {% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
-                    <th class="text-center">{{ day }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Dinner</strong></td>
-                    {% for day in range(1, 8) %}
-                    <td class="small">
-                        {% set meal = meal_dict.get((1, day, 'Dinner')) %}
-                        {% if meal and meal.recipe %}
-                            <a href="{{ url_for('recipe_view', id=meal.recipe.id) }}">{{ meal.recipe.name }}</a>
-                        {% else %}
-                            <span class="text-muted">-</span>
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                <tr>
-                    <td><strong>Dessert</strong></td>
-                    {% for day in range(1, 8) %}
-                    <td class="small">
-                        {% set meal = meal_dict.get((1, day, 'Dessert')) %}
-                        {% if meal and meal.recipe %}
-                            <a href="{{ url_for('recipe_view', id=meal.recipe.id) }}">{{ meal.recipe.name }}</a>
-                        {% else %}
-                            <span class="text-muted">-</span>
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-            </tbody>
-        </table>
+<div class="row">
+    {% for day in range(1, 8) %}
+    {% set day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+    <div class="col-md-3 col-sm-4 col-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header text-center py-1">
+                <strong>{{ day_names[day-1] }}</strong>
+            </div>
+            {% set meal = meal_dict.get((1, day, 'Dinner')) %}
+            {% if meal and meal.recipe %}
+                <a href="{{ url_for('recipe_view', id=meal.recipe.id) }}" class="text-decoration-none">
+                    {% if meal.recipe.image %}
+                    <img src="{{ url_for('static', filename='uploads/' + meal.recipe.image) }}" class="card-img-top" alt="{{ meal.recipe.name }}" style="height: 120px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                        <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body p-2 text-center">
+                        <small class="card-title text-dark">{{ meal.recipe.name }}</small>
+                    </div>
+                </a>
+            {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                    <span class="text-muted">No meal</span>
+                </div>
+                <div class="card-body p-2 text-center">
+                    <small class="text-muted">-</small>
+                </div>
+            {% endif %}
+            {% set dessert = meal_dict.get((1, day, 'Dessert')) %}
+            {% if dessert and dessert.recipe %}
+            <div class="card-footer p-1 text-center bg-light">
+                <small><i class="bi bi-cake"></i> <a href="{{ url_for('recipe_view', id=dessert.recipe.id) }}">{{ dessert.recipe.name }}</a></small>
+            </div>
+            {% endif %}
+        </div>
     </div>
+    {% endfor %}
 </div>
 {% endblock %}
