@@ -892,6 +892,12 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty = qty * 9
                 unit = 'CLOVE'
 
+            # Normalize to base units for consolidation (ML for volume, G for weight)
+            if unit in UNIT_CONVERSIONS:
+                base_unit, factor = UNIT_CONVERSIONS[unit]
+                qty = qty * factor
+                unit = base_unit
+
             key = (ing_name_upper, size_key, unit)
 
             if key in consolidated:
@@ -915,14 +921,20 @@ def generate_shopping_list(recipe_ids, multipliers=None):
         unit = item['unit']
         size = item.get('size')
 
-        # For non-container items, auto-convert large quantities
+        # For non-container items, auto-convert to user-friendly units
         if not size:
-            if unit == 'OZ' and qty >= 16:
-                qty, unit = qty / 16, 'LB'
-            elif unit == 'ML' and qty >= 1000:
-                qty, unit = qty / 1000, 'L'
-            elif unit == 'G' and qty >= 1000:
-                qty, unit = qty / 1000, 'KG'
+            # Volume: ML -> L if large, or -> CUP for medium amounts
+            if unit == 'ML':
+                if qty >= 1000:
+                    qty, unit = qty / 1000, 'L'
+                elif qty >= 237:  # About 1 cup
+                    qty, unit = qty / 236.588, 'CUP'
+            # Weight: G -> KG if large, or -> LB for medium amounts
+            elif unit == 'G':
+                if qty >= 1000:
+                    qty, unit = qty / 1000, 'KG'
+                elif qty >= 454:  # About 1 lb
+                    qty, unit = qty / 453.592, 'LB'
 
         qty = round(qty, 2)
 
