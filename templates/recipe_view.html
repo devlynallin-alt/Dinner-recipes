@@ -81,8 +81,14 @@
                     {% for ri in recipe.ingredients %}
                     <tr>
                         <td>{{ ri.ingredient.name }}</td>
-                        <td>{{ ri.quantity }}</td>
-                        <td>{{ ri.unit }}</td>
+                        <td>
+                            {% if ri.size %}
+                                {{ ri.quantity|int }} x {{ ri.size|int }}{{ ri.unit.lower() }}
+                            {% else %}
+                                {{ ri.quantity }}
+                            {% endif %}
+                        </td>
+                        <td>{% if not ri.size %}{{ ri.unit }}{% endif %}</td>
                         <td><span class="badge bg-light text-dark">{{ ri.ingredient.category }}</span></td>
                     </tr>
                     {% else %}

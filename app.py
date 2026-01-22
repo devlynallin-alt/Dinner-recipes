@@ -462,6 +462,7 @@ class RecipeIngredient(db.Model):
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False, index=True)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredient.id'), nullable=False, index=True)
     quantity = db.Column(db.Float, nullable=False)
+    size = db.Column(db.Float, nullable=True)  # Container size (e.g., 400 for 400ml can)
     unit = db.Column(db.String(20), nullable=False)
     ingredient = db.relationship('Ingredient')
 
@@ -571,9 +572,10 @@ def recipe_ingredient_add(id):
     recipe = Recipe.query.get_or_404(id)
     ingredient_id = int(request.form['ingredient_id'])
     quantity = float(request.form['quantity'])
+    size = float(request.form['size']) if request.form.get('size') else None
     unit = request.form['unit']
 
-    ri = RecipeIngredient(recipe_id=id, ingredient_id=ingredient_id, quantity=quantity, unit=unit)
+    ri = RecipeIngredient(recipe_id=id, ingredient_id=ingredient_id, quantity=quantity, size=size, unit=unit)
     db.session.add(ri)
     db.session.commit()
 
@@ -584,6 +586,7 @@ def recipe_ingredient_update(recipe_id, ri_id):
     ri = RecipeIngredient.query.get_or_404(ri_id)
     ri.ingredient_id = int(request.form.get('ingredient_id', ri.ingredient_id))
     ri.quantity = float(request.form.get('quantity', ri.quantity))
+    ri.size = float(request.form['size']) if request.form.get('size') else None
     ri.unit = request.form.get('unit', ri.unit)
     db.session.commit()
     return redirect(url_for('recipe_edit', id=recipe_id))
@@ -879,7 +882,9 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             if ing_name_upper in pantry_staples:
                 continue
 
-            key = (ing_name_upper, ri.unit.upper())
+            # Use size in key if present (for containers like cans)
+            size_key = ri.size if ri.size else None
+            key = (ing_name_upper, size_key, ri.unit.upper())
             qty = ri.quantity * multiplier
 
             if key in consolidated:
@@ -888,6 +893,7 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 consolidated[key] = {
                     'name': ri.ingredient.name,
                     'qty': qty,
+                    'size': ri.size,
                     'unit': ri.unit,
                     'category': ri.ingredient.category,
                     'pack_size': ri.ingredient.pack_size,
@@ -900,14 +906,16 @@ def generate_shopping_list(recipe_ids, multipliers=None):
     for key, item in consolidated.items():
         qty = item['qty']
         unit = item['unit']
+        size = item.get('size')
 
-        # Auto-convert large quantities
-        if unit == 'OZ' and qty >= 16:
-            qty, unit = qty / 16, 'LB'
-        elif unit == 'ML' and qty >= 1000:
-            qty, unit = qty / 1000, 'L'
-        elif unit == 'G' and qty >= 1000:
-            qty, unit = qty / 1000, 'KG'
+        # For non-container items, auto-convert large quantities
+        if not size:
+            if unit == 'OZ' and qty >= 16:
+                qty, unit = qty / 16, 'LB'
+            elif unit == 'ML' and qty >= 1000:
+                qty, unit = qty / 1000, 'L'
+            elif unit == 'G' and qty >= 1000:
+                qty, unit = qty / 1000, 'KG'
 
         qty = round(qty, 2)
 
@@ -921,6 +929,7 @@ def generate_shopping_list(recipe_ids, multipliers=None):
         shopping_items.append({
             'name': item['name'],
             'qty': qty,
+            'size': size,
             'unit': unit,
             'category': item['category'],
             'pack_size': pack_size,

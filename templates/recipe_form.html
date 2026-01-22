@@ -112,7 +112,8 @@
     <thead>
         <tr>
             <th>Ingredient</th>
-            <th>Quantity</th>
+            <th>Qty</th>
+            <th>Size</th>
             <th>Unit</th>
             <th>Actions</th>
         </tr>
@@ -129,7 +130,10 @@
                 </select>
             </td>
             <td>
-                <input type="number" name="quantity" value="{{ ri.quantity }}" step="0.01" class="form-control form-control-sm" style="width: 70px;">
+                <input type="number" name="quantity" value="{{ ri.quantity }}" step="0.01" class="form-control form-control-sm" style="width: 60px;">
+            </td>
+            <td>
+                <input type="number" name="size" value="{{ ri.size if ri.size else '' }}" step="1" class="form-control form-control-sm" style="width: 70px;" placeholder="e.g. 400">
             </td>
             <td>
                 <select name="unit" class="form-select form-select-sm" style="width: 80px;">
@@ -158,8 +162,8 @@
     <div class="card-header">Add Ingredient</div>
     <div class="card-body">
         <form method="post" action="{{ url_for('recipe_ingredient_add', id=recipe.id) }}">
-            <div class="row">
-                <div class="col-md-5">
+            <div class="row g-2">
+                <div class="col-md-4">
                     <select name="ingredient_id" class="form-select" required>
                         <option value="">Select Ingredient...</option>
                         {% for ing in ingredients %}
@@ -170,7 +174,10 @@
                 <div class="col-md-2">
                     <input type="number" name="quantity" class="form-control" placeholder="Qty" step="0.01" required>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <input type="number" name="size" class="form-control" placeholder="Size" step="1">
+                </div>
+                <div class="col-md-2">
                     <select name="unit" class="form-select" required>
                         {% for unit in ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
                         <option value="{{ unit }}">{{ unit }}</option>
@@ -183,6 +190,7 @@
                     </button>
                 </div>
             </div>
+            <small class="text-muted">Size is optional - use for cans/containers (e.g., Qty: 2, Size: 400, Unit: ML = "2 x 400ml")</small>
         </form>
     </div>
 </div>

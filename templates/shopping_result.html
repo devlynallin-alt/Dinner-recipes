@@ -40,8 +40,14 @@
                 <tr class="item-row {{ 'use-up-highlight' if item.is_use_up else '' }}">
                     <td><input type="checkbox" class="form-check-input item-checkbox"></td>
                     <td class="item-name">{{ item.name }}</td>
-                    <td>{{ item.qty }}</td>
-                    <td>{{ item.unit }}</td>
+                    <td>
+                        {% if item.size %}
+                            {{ item.qty|int }} x {{ item.size|int }}{{ item.unit.lower() }}
+                        {% else %}
+                            {{ item.qty }}
+                        {% endif %}
+                    </td>
+                    <td>{% if not item.size %}{{ item.unit }}{% endif %}</td>
                     <td>{{ item.pack_size if item.pack_size > 1 else '' }}</td>
                     <td class="{{ 'leftover-highlight' if item.leftover else '' }}">
                         {{ item.leftover if item.leftover else '' }}
