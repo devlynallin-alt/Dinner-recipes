@@ -137,7 +137,7 @@
             </td>
             <td>
                 <select name="unit" class="form-select form-select-sm" style="width: 80px;">
-                    {% for unit in ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
+                    {% for unit in ['EA', 'CAN', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
                     <option value="{{ unit }}" {{ 'selected' if ri.unit == unit else '' }}>{{ unit }}</option>
                     {% endfor %}
                 </select>
@@ -179,7 +179,7 @@
                 </div>
                 <div class="col-md-2">
                     <select name="unit" class="form-select" required>
-                        {% for unit in ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
+                        {% for unit in ['EA', 'CAN', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
                         <option value="{{ unit }}">{{ unit }}</option>
                         {% endfor %}
                     </select>

@@ -48,7 +48,7 @@ UNIT_MAPPINGS = {
     'head': 'HEAD', 'heads': 'HEAD',
     'slice': 'EA', 'slices': 'EA',
     'piece': 'EA', 'pieces': 'EA',
-    'can': 'EA', 'cans': 'EA',
+    'can': 'CAN', 'cans': 'CAN',
     'package': 'EA', 'packages': 'EA', 'pkg': 'EA',
     'bunch': 'EA', 'bunches': 'EA',
     'stalk': 'EA', 'stalks': 'EA',

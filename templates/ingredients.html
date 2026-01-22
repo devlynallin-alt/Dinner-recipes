@@ -110,7 +110,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Default Unit</label>
                                 <select name="default_unit" class="form-select" required>
-                                    {% for unit in ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
+                                    {% for unit in ['EA', 'CAN', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
                                     <option value="{{ unit }}">{{ unit }}</option>
                                     {% endfor %}
                                 </select>
@@ -151,7 +151,7 @@
 </style>
 <script>
 const categories = ['Meat', 'Produce', 'Dairy', 'Pantry', 'Frozen', 'Bakery', 'Spices', 'Condiments', 'Beverages', 'Other'];
-const units = ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'];
+const units = ['EA', 'CAN', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'];
 
 // Make cells editable on click
 document.querySelectorAll('.editable').forEach(cell => {
