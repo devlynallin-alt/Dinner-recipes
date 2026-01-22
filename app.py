@@ -884,8 +884,15 @@ def generate_shopping_list(recipe_ids, multipliers=None):
 
             # Use size in key if present (for containers like cans)
             size_key = ri.size if ri.size else None
-            key = (ing_name_upper, size_key, ri.unit.upper())
+            unit = ri.unit.upper()
             qty = ri.quantity * multiplier
+
+            # Convert garlic heads to cloves (1 head = 9 cloves)
+            if 'GARLIC' in ing_name_upper and unit == 'HEAD':
+                qty = qty * 9
+                unit = 'CLOVE'
+
+            key = (ing_name_upper, size_key, unit)
 
             if key in consolidated:
                 consolidated[key]['qty'] += qty
@@ -894,7 +901,7 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                     'name': ri.ingredient.name,
                     'qty': qty,
                     'size': ri.size,
-                    'unit': ri.unit,
+                    'unit': unit,
                     'category': ri.ingredient.category,
                     'pack_size': ri.ingredient.pack_size,
                     'cost': ri.ingredient.cost,
@@ -916,15 +923,6 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty, unit = qty / 1000, 'L'
             elif unit == 'G' and qty >= 1000:
                 qty, unit = qty / 1000, 'KG'
-            # Convert garlic cloves to heads (9 cloves per head)
-            elif unit == 'CLOVE' and 'GARLIC' in item['name'].upper() and qty >= 9:
-                heads = int(qty // 9)
-                remaining_cloves = qty % 9
-                if remaining_cloves > 0:
-                    qty = heads + (remaining_cloves / 9)  # Show as decimal heads
-                else:
-                    qty = heads
-                unit = 'HEAD'
 
         qty = round(qty, 2)
 
