@@ -916,6 +916,15 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty, unit = qty / 1000, 'L'
             elif unit == 'G' and qty >= 1000:
                 qty, unit = qty / 1000, 'KG'
+            # Convert garlic cloves to heads (9 cloves per head)
+            elif unit == 'CLOVE' and 'GARLIC' in item['name'].upper() and qty >= 9:
+                heads = int(qty // 9)
+                remaining_cloves = qty % 9
+                if remaining_cloves > 0:
+                    qty = heads + (remaining_cloves / 9)  # Show as decimal heads
+                else:
+                    qty = heads
+                unit = 'HEAD'
 
         qty = round(qty, 2)
 
