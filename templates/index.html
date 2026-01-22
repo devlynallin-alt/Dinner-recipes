@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2><i class="bi bi-house-heart"></i> Welcome to Dinner Recipes</h2>
+        <p class="lead">Manage your recipes, plan meals, and generate shopping lists.</p>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-book"></i> Recipes</h5>
+                        <p class="card-text">{{ recipes|length }} recipes in your collection</p>
+                        <a href="{{ url_for('recipes_list') }}" class="btn btn-primary">View Recipes</a>
+                        <a href="{{ url_for('recipe_add') }}" class="btn btn-outline-primary">Add New</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-cart"></i> Shopping List</h5>
+                        <p class="card-text">Generate a shopping list from selected recipes</p>
+                        <a href="{{ url_for('shopping_list') }}" class="btn btn-success">Create List</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-calendar-week"></i> Meal Plan</h5>
+                        <p class="card-text">Plan your weekly meals with smart randomization</p>
+                        <a href="{{ url_for('meal_plan') }}" class="btn btn-info">Plan Meals</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-gear"></i> Settings</h5>
+                        <p class="card-text">Manage ingredients and pantry staples</p>
+                        <a href="{{ url_for('ingredients_list') }}" class="btn btn-secondary">Ingredients</a>
+                        <a href="{{ url_for('pantry_list') }}" class="btn btn-outline-secondary">Pantry</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i> Recent Recipes
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for recipe in recipes[:10] %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('recipe_view', id=recipe.id) }}">{{ recipe.name }}</a>
+                    <span class="badge bg-secondary">{{ recipe.category }}</span>
+                </li>
+                {% else %}
+                <li class="list-group-item">No recipes yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

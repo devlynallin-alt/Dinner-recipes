@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Recipes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-book"></i> Recipes</h2>
+    <a href="{{ url_for('recipe_add') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Add Recipe
+    </a>
+</div>
+
+<div class="mb-3">
+    <a href="{{ url_for('recipes_list', category='all') }}" class="btn btn-sm {{ 'btn-primary' if selected_category == 'all' else 'btn-outline-primary' }}">All</a>
+    {% for cat in categories %}
+    <a href="{{ url_for('recipes_list', category=cat) }}" class="btn btn-sm {{ 'btn-primary' if selected_category == cat else 'btn-outline-primary' }}">{{ cat }}</a>
+    {% endfor %}
+</div>
+
+<div class="row">
+    {% for recipe in recipes %}
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            {% if recipe.image %}
+            <img src="{{ url_for('static', filename='uploads/' + recipe.image) }}" class="card-img-top" alt="{{ recipe.name }}" style="height: 180px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ recipe.name }}</h5>
+                <p class="card-text">
+                    <span class="badge bg-secondary">{{ recipe.category }}</span>
+                    <span class="badge bg-info">{{ recipe.protein_type }}</span>
+                    <span class="badge {{ 'bg-warning' if recipe.difficulty == 'Hard' else 'bg-success' }}">{{ recipe.difficulty }}</span>
+                </p>
+                <p class="card-text text-muted">
+                    <small>{{ recipe.ingredients|length }} ingredients | {{ recipe.servings }} servings</small>
+                </p>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('recipe_view', id=recipe.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                <a href="{{ url_for('recipe_edit', id=recipe.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <p class="text-muted">No recipes found. <a href="{{ url_for('recipe_add') }}">Add your first recipe!</a></p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

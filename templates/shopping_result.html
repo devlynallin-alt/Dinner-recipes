@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Shopping List{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-cart-check"></i> Shopping List</h2>
+    <div>
+        <button onclick="window.print()" class="btn btn-outline-primary">
+            <i class="bi bi-printer"></i> Print
+        </button>
+        <a href="{{ url_for('meal_plan') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table table-striped mb-0" id="shoppingTable">
+        <thead>
+            <tr>
+                <th><i class="bi bi-check-square"></i></th>
+                <th>Ingredient</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Pack Size</th>
+                <th>Leftover</th>
+                <th>Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set current_category = namespace(value='') %}
+            {% for item in items %}
+                {% if item.category != current_category.value %}
+                    {% set current_category.value = item.category %}
+                    <tr class="category-header">
+                        <td colspan="7">-- {{ item.category }} --</td>
+                    </tr>
+                {% endif %}
+                <tr class="item-row {{ 'use-up-highlight' if item.is_use_up else '' }}">
+                    <td><input type="checkbox" class="form-check-input item-checkbox"></td>
+                    <td class="item-name">{{ item.name }}</td>
+                    <td>{{ item.qty }}</td>
+                    <td>{{ item.unit }}</td>
+                    <td>{{ item.pack_size if item.pack_size > 1 else '' }}</td>
+                    <td class="{{ 'leftover-highlight' if item.leftover else '' }}">
+                        {{ item.leftover if item.leftover else '' }}
+                    </td>
+                    <td>${{ '%.2f'|format(item.cost) }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="text-muted">No items in shopping list</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="table-secondary">
+                <td colspan="5" class="text-end"><strong>Subtotal:</strong></td>
+                <td colspan="2"><strong>${{ '%.2f'|format(subtotal) }}</strong></td>
+            </tr>
+            <tr class="table-secondary">
+                <td colspan="5" class="text-end"><strong>Tax (12%):</strong></td>
+                <td colspan="2"><strong>${{ '%.2f'|format(tax) }}</strong></td>
+            </tr>
+            <tr class="table-success">
+                <td colspan="5" class="text-end"><strong>Total:</strong></td>
+                <td colspan="2"><strong>${{ '%.2f'|format(total) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="mt-3">
+    <p class="small text-muted">
+        <span class="badge use-up-highlight text-dark">Green</span> = USE UP ingredient |
+        <span class="badge leftover-highlight text-dark">Yellow</span> = Has leftover
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+        var row = this.closest('tr');
+        if (this.checked) {
+            row.classList.add('checked-off');
+        } else {
+            row.classList.remove('checked-off');
+        }
+    });
+});
+</script>
+{% endblock %}

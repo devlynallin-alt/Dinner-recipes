@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'Edit ' + recipe.name if recipe else 'Add Recipe' }}{% endblock %}
+
+{% block content %}
+<h2>{{ 'Edit Recipe' if recipe else 'Add Recipe' }}</h2>
+
+<form method="post" class="mb-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Recipe Name</label>
+                <input type="text" name="name" class="form-control" value="{{ recipe.name if recipe else '' }}" required>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select" required>
+                    {% for cat in ['Dinner', 'Soup', 'Sandwich', 'Breakfast', 'Dessert', 'Side', 'Archive'] %}
+                    <option value="{{ cat }}" {{ 'selected' if recipe and recipe.category == cat else '' }}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label class="form-label">Protein Type</label>
+                <select name="protein_type" class="form-select" required>
+                    {% for pt in ['Chicken', 'Beef', 'Fish', 'Veggie', 'None'] %}
+                    <option value="{{ pt }}" {{ 'selected' if recipe and recipe.protein_type == pt else '' }}>{{ pt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label class="form-label">Difficulty</label>
+                <select name="difficulty" class="form-select" required>
+                    {% for diff in ['Easy', 'Hard'] %}
+                    <option value="{{ diff }}" {{ 'selected' if recipe and recipe.difficulty == diff else '' }}>{{ diff }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label class="form-label">Servings</label>
+                <input type="number" name="servings" class="form-control" value="{{ recipe.servings if recipe else 4 }}" min="1" required>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Instructions</label>
+        <textarea name="instructions" class="form-control" rows="6" placeholder="Enter cooking instructions...">{{ recipe.instructions if recipe else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg"></i> {{ 'Update Recipe' if recipe else 'Create Recipe' }}
+    </button>
+    <a href="{{ url_for('recipes_list') }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+
+{% if recipe %}
+<form method="post" action="{{ url_for('recipe_delete', id=recipe.id) }}" class="d-inline float-end" style="margin-top: -50px;" onsubmit="return confirm('Are you sure you want to delete this recipe? This cannot be undone.');">
+    <button type="submit" class="btn btn-danger">
+        <i class="bi bi-trash"></i> Delete Recipe
+    </button>
+</form>
+{% endif %}
+
+{% if recipe %}
+<hr>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h4>Recipe Image</h4>
+        <div class="card">
+            <div class="card-body">
+                {% if recipe.image %}
+                <img src="{{ url_for('static', filename='uploads/' + recipe.image) }}" class="img-fluid mb-3 rounded" alt="{{ recipe.name }}" style="max-height: 200px;">
+                {% else %}
+                <div class="text-muted mb-3">No image uploaded</div>
+                {% endif %}
+                <form method="post" action="{{ url_for('recipe_upload_image', id=recipe.id) }}" enctype="multipart/form-data">
+                    <div class="input-group">
+                        <input type="file" name="image" class="form-control" accept="image/*">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-upload"></i> Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% if recipe.source_url %}
+    <div class="col-md-6">
+        <h4>Source</h4>
+        <a href="{{ recipe.source_url }}" target="_blank" class="btn btn-outline-info">
+            <i class="bi bi-box-arrow-up-right"></i> View Original Recipe
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<h4>Ingredients</h4>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ingredient</th>
+            <th>Quantity</th>
+            <th>Unit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ri in recipe.ingredients %}
+        <tr>
+            <form method="post" action="{{ url_for('recipe_ingredient_update', recipe_id=recipe.id, ri_id=ri.id) }}">
+            <td>
+                <select name="ingredient_id" class="form-select form-select-sm">
+                    {% for ing in ingredients %}
+                    <option value="{{ ing.id }}" {{ 'selected' if ing.id == ri.ingredient_id else '' }}>{{ ing.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <input type="number" name="quantity" value="{{ ri.quantity }}" step="0.01" class="form-control form-control-sm" style="width: 70px;">
+            </td>
+            <td>
+                <select name="unit" class="form-select form-select-sm" style="width: 80px;">
+                    {% for unit in ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
+                    <option value="{{ unit }}" {{ 'selected' if ri.unit == unit else '' }}>{{ unit }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <button type="submit" class="btn btn-sm btn-outline-primary" title="Save">
+                    <i class="bi bi-check"></i>
+                </button>
+            </form>
+                <form method="post" action="{{ url_for('recipe_ingredient_delete', recipe_id=recipe.id, ri_id=ri.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="card">
+    <div class="card-header">Add Ingredient</div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('recipe_ingredient_add', id=recipe.id) }}">
+            <div class="row">
+                <div class="col-md-5">
+                    <select name="ingredient_id" class="form-select" required>
+                        <option value="">Select Ingredient...</option>
+                        {% for ing in ingredients %}
+                        <option value="{{ ing.id }}">{{ ing.name }} ({{ ing.category }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" name="quantity" class="form-control" placeholder="Qty" step="0.01" required>
+                </div>
+                <div class="col-md-3">
+                    <select name="unit" class="form-select" required>
+                        {% for unit in ['EA', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'] %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

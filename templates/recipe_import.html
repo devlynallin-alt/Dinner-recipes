@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Import Recipe{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-cloud-download"></i> Import Recipe from URL</h2>
+
+{% if not imported %}
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">Recipe URL</label>
+                <input type="url" name="url" class="form-control" placeholder="https://www.example.com/recipe/..." required>
+                <div class="form-text">Paste a recipe URL from sites like AllRecipes, Food Network, BBC Good Food, etc.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Fetch Recipe
+            </button>
+            <a href="{{ url_for('recipes_list') }}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% else %}
+<form method="post" action="{{ url_for('recipe_import_save') }}">
+    <input type="hidden" name="source_url" value="{{ source_url }}">
+    <input type="hidden" name="image_url" value="{{ image_url }}">
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">Recipe Details</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Recipe Name</label>
+                        <input type="text" name="name" class="form-control" value="{{ name }}" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Category</label>
+                                <select name="category" class="form-select">
+                                    {% for cat in ['Dinner', 'Soup', 'Sandwich', 'Breakfast', 'Dessert', 'Side'] %}
+                                    <option value="{{ cat }}">{{ cat }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Protein Type</label>
+                                <select name="protein_type" class="form-select">
+                                    {% for pt in ['None', 'Chicken', 'Beef', 'Fish', 'Veggie'] %}
+                                    <option value="{{ pt }}">{{ pt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Servings</label>
+                                <input type="number" name="servings" class="form-control" value="{{ servings }}" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Difficulty</label>
+                        <select name="difficulty" class="form-select">
+                            <option value="Easy">Easy</option>
+                            <option value="Hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">Ingredients (will be auto-imported)</div>
+                <div class="card-body">
+                    <textarea name="ingredients_text" class="form-control" rows="8">{{ ingredients_text }}</textarea>
+                    <div class="form-text">One ingredient per line. Format: "2 cups flour" or "1 lb chicken breast"</div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">Instructions</div>
+                <div class="card-body">
+                    <textarea name="instructions" class="form-control" rows="10">{{ instructions }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            {% if image_url %}
+            <div class="card mb-3">
+                <div class="card-header">Recipe Image</div>
+                <img src="{{ image_url }}" class="card-img-bottom" alt="Recipe image" style="max-height: 300px; object-fit: cover;">
+            </div>
+            {% endif %}
+
+            {% if source_url %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <a href="{{ source_url }}" target="_blank" class="btn btn-outline-info w-100">
+                        <i class="bi bi-box-arrow-up-right"></i> View Original
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-lg"></i> Save Recipe
+        </button>
+        <a href="{{ url_for('recipe_import') }}" class="btn btn-outline-secondary">Start Over</a>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

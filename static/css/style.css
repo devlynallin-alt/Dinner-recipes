@@ -1,0 +1,118 @@
+/* Custom styles for Dinner Recipes Web App */
+
+body {
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+/* Category header rows in tables */
+.category-header {
+    background-color: #e9ecef !important;
+    font-weight: 600;
+}
+
+.category-header td {
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+/* USE UP ingredient highlighting */
+.use-up-highlight {
+    background-color: #c6efce !important;
+}
+
+/* Leftover quantity highlighting */
+.leftover-highlight {
+    background-color: #fff3cd;
+    font-weight: 600;
+}
+
+/* Meal plan table cells */
+.table td.small {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+}
+
+.table td.small a {
+    text-decoration: none;
+}
+
+.table td.small a:hover {
+    text-decoration: underline;
+}
+
+/* Recipe cards in list view */
+.recipe-card {
+    transition: box-shadow 0.2s;
+}
+
+.recipe-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Form improvements */
+.form-label {
+    font-weight: 500;
+}
+
+.form-select-sm, .form-control-sm {
+    font-size: 0.875rem;
+}
+
+/* Print styles */
+@media print {
+    .navbar, .btn, form {
+        display: none !important;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+
+    .use-up-highlight {
+        background-color: #c6efce !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .leftover-highlight {
+        background-color: #fff3cd !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* Badge colors for protein types */
+.badge.protein-chicken { background-color: #ffc107; color: #212529; }
+.badge.protein-beef { background-color: #dc3545; }
+.badge.protein-fish { background-color: #0dcaf0; color: #212529; }
+.badge.protein-veggie { background-color: #198754; }
+.badge.protein-none { background-color: #6c757d; }
+
+/* Difficulty badges */
+.badge.diff-easy { background-color: #198754; }
+.badge.diff-hard { background-color: #fd7e14; }
+
+/* Checked off items in shopping list */
+.checked-off {
+    text-decoration: line-through;
+    opacity: 0.5;
+    background-color: #e9ecef !important;
+}
+
+.checked-off td {
+    text-decoration: line-through;
+}
