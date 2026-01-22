@@ -1004,32 +1004,33 @@ def meal_plan():
 
 @app.route('/mealplan/randomize', methods=['POST'])
 def meal_plan_randomize():
+    include_dessert = request.form.get('include_dessert') == 'on'
+
     # Get all dinner recipes and shuffle
     all_dinners = list(Recipe.query.filter_by(category='Dinner').all())
     random.shuffle(all_dinners)
 
-    # Get all desserts and shuffle
-    all_desserts = list(Recipe.query.filter_by(category='Dessert').all())
-    random.shuffle(all_desserts)
-
     # Clear existing meal plan
     MealPlan.query.delete()
 
-    # Assign 7 random dinners and desserts
+    # Assign 7 random dinners
     for day in range(1, 8):
-        # Pick dinner
         if all_dinners:
             dinner_idx = (day - 1) % len(all_dinners)
             selected_dinner = all_dinners[dinner_idx]
             meal = MealPlan(week=1, day=day, meal_type='Dinner', recipe_id=selected_dinner.id)
             db.session.add(meal)
 
-        # Pick dessert
-        if all_desserts:
-            dessert_idx = (day - 1) % len(all_desserts)
-            selected_dessert = all_desserts[dessert_idx]
-            meal = MealPlan(week=1, day=day, meal_type='Dessert', recipe_id=selected_dessert.id)
-            db.session.add(meal)
+    # Add desserts only if checkbox is checked
+    if include_dessert:
+        all_desserts = list(Recipe.query.filter_by(category='Dessert').all())
+        random.shuffle(all_desserts)
+        for day in range(1, 8):
+            if all_desserts:
+                dessert_idx = (day - 1) % len(all_desserts)
+                selected_dessert = all_desserts[dessert_idx]
+                meal = MealPlan(week=1, day=day, meal_type='Dessert', recipe_id=selected_dessert.id)
+                db.session.add(meal)
 
     db.session.commit()
     flash('Week randomized!', 'success')
