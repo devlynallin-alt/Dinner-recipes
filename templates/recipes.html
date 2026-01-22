@@ -10,16 +10,21 @@
     </a>
 </div>
 
-<div class="mb-3">
-    <a href="{{ url_for('recipes_list', category='all') }}" class="btn btn-sm {{ 'btn-primary' if selected_category == 'all' else 'btn-outline-primary' }}">All</a>
-    {% for cat in categories %}
-    <a href="{{ url_for('recipes_list', category=cat) }}" class="btn btn-sm {{ 'btn-primary' if selected_category == cat else 'btn-outline-primary' }}">{{ cat }}</a>
-    {% endfor %}
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search recipes...">
+    </div>
+    <div class="col-md-8 d-flex align-items-center flex-wrap gap-1">
+        <a href="{{ url_for('recipes_list', category='all') }}" class="btn btn-sm {{ 'btn-primary' if selected_category == 'all' else 'btn-outline-primary' }}">All</a>
+        {% for cat in categories %}
+        <a href="{{ url_for('recipes_list', category=cat) }}" class="btn btn-sm {{ 'btn-primary' if selected_category == cat else 'btn-outline-primary' }}">{{ cat }}</a>
+        {% endfor %}
+    </div>
 </div>
 
-<div class="row">
+<div class="row" id="recipeGrid">
     {% for recipe in recipes %}
-    <div class="col-md-4 mb-3">
+    <div class="col-md-4 mb-3 recipe-card" data-name="{{ recipe.name.lower() }}">
         <div class="card h-100">
             {% if recipe.image %}
             <img src="{{ url_for('static', filename='uploads/' + recipe.image) }}" class="card-img-top" alt="{{ recipe.name }}" style="height: 180px; object-fit: cover;">
@@ -51,4 +56,16 @@
     </div>
     {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('searchInput').addEventListener('input', function() {
+    const search = this.value.toLowerCase();
+    document.querySelectorAll('.recipe-card').forEach(card => {
+        const name = card.dataset.name;
+        card.style.display = name.includes(search) ? '' : 'none';
+    });
+});
+</script>
 {% endblock %}
