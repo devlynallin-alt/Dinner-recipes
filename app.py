@@ -1126,6 +1126,36 @@ def ingredient_delete(id):
     return redirect(url_for('ingredients_list'))
 
 # ============================================
+# ROUTES - WHAT CAN I MAKE
+# ============================================
+
+@app.route('/whatcanmake')
+def what_can_make():
+    ingredients = Ingredient.query.order_by(Ingredient.name).all()
+    recipes = Recipe.query.filter(Recipe.category != 'Archive').all()
+
+    # Get pantry staple IDs (pre-checked)
+    pantry_ids = {ps.ingredient_id for ps in PantryStaple.query.filter_by(have_it=True).all()}
+
+    # Build recipes JSON for JavaScript
+    recipes_json = []
+    for r in recipes:
+        recipes_json.append({
+            'id': r.id,
+            'name': r.name,
+            'category': r.category,
+            'image': r.image,
+            'ingredients': [ri.ingredient_id for ri in r.ingredients],
+            'ingredient_names': [ri.ingredient.name for ri in r.ingredients]
+        })
+
+    import json
+    return render_template('whatcanmake.html',
+                         ingredients=ingredients,
+                         pantry_ids=pantry_ids,
+                         recipes_json=json.dumps(recipes_json))
+
+# ============================================
 # ROUTES - PANTRY STAPLES
 # ============================================
 

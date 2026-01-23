@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}What Can I Make?{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-question-circle"></i> What Can I Make?</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-basket"></i> Ingredients I Have
+                <button class="btn btn-sm btn-outline-secondary float-end" onclick="clearAll()">Clear</button>
+            </div>
+            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                <input type="text" id="ingredientSearch" class="form-control form-control-sm mb-2" placeholder="Search ingredients...">
+                <form id="ingredientForm">
+                    {% for ing in ingredients %}
+                    <div class="form-check ingredient-item" data-name="{{ ing.name.lower() }}">
+                        <input class="form-check-input ingredient-check" type="checkbox" value="{{ ing.id }}" id="ing{{ ing.id }}" {% if ing.id in pantry_ids %}checked{% endif %}>
+                        <label class="form-check-label" for="ing{{ ing.id }}">{{ ing.name }}</label>
+                    </div>
+                    {% endfor %}
+                </form>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary w-100" onclick="findRecipes()">
+                    <i class="bi bi-search"></i> Find Recipes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-book"></i> Recipes You Can Make
+            </div>
+            <div class="card-body" id="resultsArea">
+                <p class="text-muted">Select ingredients you have and click "Find Recipes"</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const recipes = {{ recipes_json|safe }};
+
+function clearAll() {
+    document.querySelectorAll('.ingredient-check').forEach(cb => cb.checked = false);
+}
+
+document.getElementById('ingredientSearch').addEventListener('input', function() {
+    const search = this.value.toLowerCase();
+    document.querySelectorAll('.ingredient-item').forEach(item => {
+        item.style.display = item.dataset.name.includes(search) ? '' : 'none';
+    });
+});
+
+function findRecipes() {
+    const selectedIds = new Set();
+    document.querySelectorAll('.ingredient-check:checked').forEach(cb => {
+        selectedIds.add(parseInt(cb.value));
+    });
+
+    if (selectedIds.size === 0) {
+        document.getElementById('resultsArea').innerHTML = '<p class="text-warning">Please select at least one ingredient</p>';
+        return;
+    }
+
+    // Calculate match percentage for each recipe
+    const matches = [];
+    recipes.forEach(recipe => {
+        const recipeIngIds = recipe.ingredients;
+        if (recipeIngIds.length === 0) {
+            // Recipes with no ingredients (like Costco Hot Dog) always match
+            matches.push({recipe: recipe, match: 100, have: 0, need: 0, missing: []});
+            return;
+        }
+
+        let have = 0;
+        let missing = [];
+        recipeIngIds.forEach(ingId => {
+            if (selectedIds.has(ingId)) {
+                have++;
+            } else {
+                missing.push(recipe.ingredient_names[recipeIngIds.indexOf(ingId)]);
+            }
+        });
+
+        const match = Math.round((have / recipeIngIds.length) * 100);
+        if (match > 0) {
+            matches.push({
+                recipe: recipe,
+                match: match,
+                have: have,
+                need: recipeIngIds.length - have,
+                missing: missing
+            });
+        }
+    });
+
+    // Sort by match percentage (highest first)
+    matches.sort((a, b) => b.match - a.match);
+
+    // Build results HTML
+    let html = '';
+    if (matches.length === 0) {
+        html = '<p class="text-muted">No recipes match your ingredients</p>';
+    } else {
+        matches.forEach(m => {
+            const badgeClass = m.match === 100 ? 'bg-success' : m.match >= 75 ? 'bg-info' : m.match >= 50 ? 'bg-warning' : 'bg-secondary';
+            html += `
+                <div class="card mb-2">
+                    <div class="card-body p-2 d-flex align-items-center">
+                        ${m.recipe.image ? `<img src="/static/uploads/${m.recipe.image}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">` : '<div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;"><i class="bi bi-image text-muted"></i></div>'}
+                        <div class="flex-grow-1">
+                            <a href="/recipe/${m.recipe.id}" class="fw-bold text-decoration-none">${m.recipe.name}</a>
+                            <br>
+                            <small class="text-muted">${m.recipe.category} | ${m.recipe.ingredients.length} ingredients</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge ${badgeClass}">${m.match}%</span>
+                            ${m.need > 0 ? `<br><small class="text-danger">Need ${m.need} more</small>` : '<br><small class="text-success">Ready!</small>'}
+                        </div>
+                    </div>
+                    ${m.missing.length > 0 && m.missing.length <= 5 ? `<div class="card-footer p-1"><small class="text-muted">Missing: ${m.missing.join(', ')}</small></div>` : ''}
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById('resultsArea').innerHTML = html;
+}
+</script>
+{% endblock %}
