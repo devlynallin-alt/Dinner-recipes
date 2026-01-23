@@ -1020,6 +1020,9 @@ def shopping_add_from_recipes():
     """Add items from selected recipes to shopping list"""
     recipe_ids = request.form.getlist('recipes')
     if recipe_ids:
+        # Clear existing items first
+        ShoppingItem.query.delete()
+
         items, _, _, _ = generate_shopping_list(recipe_ids)
         for item in items:
             qty_str = f"{item['qty']} {item['unit']}" if not item.get('size') else f"{int(item['qty'])} x {int(item['size'])}{item['unit'].lower()}"
