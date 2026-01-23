@@ -5,9 +5,14 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-book"></i> Recipes</h2>
-    <a href="{{ url_for('recipe_add') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> Add Recipe
-    </a>
+    <div>
+        <button type="submit" form="recipeSelectForm" class="btn btn-success me-2" id="generateListBtn" style="display: none;">
+            <i class="bi bi-cart"></i> Shopping List (<span id="selectedCount">0</span>)
+        </button>
+        <a href="{{ url_for('recipe_add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add Recipe
+        </a>
+    </div>
 </div>
 
 <div class="row mb-3">
@@ -22,10 +27,14 @@
     </div>
 </div>
 
+<form method="post" action="{{ url_for('shopping_generate') }}" id="recipeSelectForm">
 <div class="row" id="recipeGrid">
     {% for recipe in recipes %}
     <div class="col-md-4 mb-3 recipe-card" data-name="{{ recipe.name.lower() }}">
-        <div class="card h-100">
+        <div class="card h-100 position-relative">
+            <div class="position-absolute" style="top: 10px; left: 10px; z-index: 10;">
+                <input type="checkbox" name="recipes" value="{{ recipe.id }}" class="form-check-input recipe-checkbox" style="width: 24px; height: 24px;">
+            </div>
             <a href="{{ url_for('recipe_view', id=recipe.id) }}">
                 {% if recipe.image %}
                 <img src="{{ url_for('static', filename='uploads/' + recipe.image) }}" class="card-img-top" alt="{{ recipe.name }}" style="height: 180px; object-fit: cover;">
@@ -58,9 +67,19 @@
     </div>
     {% endfor %}
 </div>
+</form>
 {% endblock %}
 
 {% block scripts %}
+<style>
+.recipe-checkbox:checked + a img,
+.recipe-checkbox:checked ~ a img {
+    opacity: 0.7;
+}
+.card:has(.recipe-checkbox:checked) {
+    border: 3px solid #198754;
+}
+</style>
 <script>
 document.getElementById('searchInput').addEventListener('input', function() {
     const search = this.value.toLowerCase();
@@ -68,6 +87,17 @@ document.getElementById('searchInput').addEventListener('input', function() {
         const name = card.dataset.name;
         card.style.display = name.includes(search) ? '' : 'none';
     });
+});
+
+// Track checkbox selections
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.recipe-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = count;
+    document.getElementById('generateListBtn').style.display = count > 0 ? 'inline-block' : 'none';
+}
+
+document.querySelectorAll('.recipe-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectedCount);
 });
 </script>
 {% endblock %}
