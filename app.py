@@ -974,10 +974,25 @@ def generate_shopping_list(recipe_ids, multipliers=None):
 
 @app.route('/shopping')
 def shopping_list():
-    recipes = Recipe.query.filter(Recipe.category != 'Archive').order_by(Recipe.name).all()
+    # Get recipes from current meal plan
+    meals = MealPlan.query.filter_by(week=1).all()
+    recipe_ids = {meal.recipe_id for meal in meals if meal.recipe_id}
+
+    # Generate shopping list from meal plan
+    items, subtotal, tax, total = generate_shopping_list(recipe_ids)
+
+    # Get USE UP items for the sidebar
     use_up_items = UseUpItem.query.all()
     ingredients = Ingredient.query.order_by(Ingredient.name).all()
-    return render_template('shopping.html', recipes=recipes, use_up_items=use_up_items, ingredients=ingredients)
+
+    return render_template('shopping.html',
+                         items=items,
+                         subtotal=subtotal,
+                         tax=tax,
+                         total=total,
+                         use_up_items=use_up_items,
+                         ingredients=ingredients,
+                         meal_count=len(recipe_ids))
 
 @app.route('/shopping/generate', methods=['POST'])
 def shopping_generate():
