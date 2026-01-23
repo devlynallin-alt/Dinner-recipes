@@ -33,18 +33,27 @@
             </div>
             {% set meal = meal_dict.get((1, day, 'Dinner')) %}
             {% if meal and meal.recipe %}
-                <a href="{{ url_for('recipe_view', id=meal.recipe.id) }}" class="text-decoration-none">
-                    {% if meal.recipe.image %}
-                    <img src="{{ url_for('static', filename='uploads/' + meal.recipe.image) }}" class="card-img-top" alt="{{ meal.recipe.name }}" style="height: 120px; object-fit: cover;">
-                    {% else %}
-                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
-                        <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
-                    </div>
-                    {% endif %}
-                    <div class="card-body p-2 text-center">
+                <div class="position-relative">
+                    <a href="{{ url_for('recipe_view', id=meal.recipe.id) }}" class="text-decoration-none">
+                        {% if meal.recipe.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + meal.recipe.image) }}" class="card-img-top" alt="{{ meal.recipe.name }}" style="height: 120px; object-fit: cover;">
+                        {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                            <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
+                        </div>
+                        {% endif %}
+                    </a>
+                    <form method="post" action="{{ url_for('meal_plan_lock', day=day, meal_type='Dinner') }}" class="position-absolute" style="top: 5px; right: 5px;">
+                        <button type="submit" class="btn btn-sm {{ 'btn-warning' if meal.locked else 'btn-outline-light' }}" title="{{ 'Unlock' if meal.locked else 'Lock' }}">
+                            <i class="bi {{ 'bi-lock-fill' if meal.locked else 'bi-unlock' }}"></i>
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body p-2 text-center {{ 'bg-warning bg-opacity-25' if meal.locked else '' }}">
+                    <a href="{{ url_for('recipe_view', id=meal.recipe.id) }}" class="text-decoration-none">
                         <small class="card-title text-dark">{{ meal.recipe.name }}</small>
-                    </div>
-                </a>
+                    </a>
+                </div>
             {% else %}
                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
                     <span class="text-muted">No meal</span>
@@ -55,8 +64,16 @@
             {% endif %}
             {% set dessert = meal_dict.get((1, day, 'Dessert')) %}
             {% if dessert and dessert.recipe %}
-            <div class="card-footer p-1 text-center bg-light">
-                <small><i class="bi bi-cake"></i> <a href="{{ url_for('recipe_view', id=dessert.recipe.id) }}">{{ dessert.recipe.name }}</a></small>
+            <div class="card-footer p-1 text-center {{ 'bg-warning bg-opacity-25' if dessert.locked else 'bg-light' }}">
+                <small>
+                    <i class="bi bi-cake"></i>
+                    <a href="{{ url_for('recipe_view', id=dessert.recipe.id) }}">{{ dessert.recipe.name }}</a>
+                    <form method="post" action="{{ url_for('meal_plan_lock', day=day, meal_type='Dessert') }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm p-0 {{ 'text-warning' if dessert.locked else 'text-muted' }}" title="{{ 'Unlock' if dessert.locked else 'Lock' }}">
+                            <i class="bi {{ 'bi-lock-fill' if dessert.locked else 'bi-unlock' }}"></i>
+                        </button>
+                    </form>
+                </small>
             </div>
             {% endif %}
         </div>

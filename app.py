@@ -478,6 +478,7 @@ class MealPlan(db.Model):
     day = db.Column(db.Integer, nullable=False)
     meal_type = db.Column(db.String(20), nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=True, index=True)
+    locked = db.Column(db.Boolean, default=False)
     recipe = db.relationship('Recipe')
 
 class Settings(db.Model):
@@ -1030,34 +1031,50 @@ def meal_plan():
 def meal_plan_randomize():
     include_dessert = request.form.get('include_dessert') == 'on'
 
-    # Get all dinner recipes and shuffle
-    all_dinners = list(Recipe.query.filter_by(category='Dinner').all())
+    # Get locked meals to preserve
+    locked_meals = {(m.day, m.meal_type): m for m in MealPlan.query.filter_by(week=1, locked=True).all()}
+    locked_recipe_ids = {m.recipe_id for m in locked_meals.values() if m.recipe_id}
+
+    # Delete only unlocked meals
+    MealPlan.query.filter_by(week=1, locked=False).delete()
+
+    # Get all dinner recipes (excluding locked ones) and shuffle
+    all_dinners = [r for r in Recipe.query.filter_by(category='Dinner').all() if r.id not in locked_recipe_ids]
     random.shuffle(all_dinners)
 
-    # Clear existing meal plan
-    MealPlan.query.delete()
-
-    # Assign 7 random dinners
+    # Assign random dinners to unlocked days
+    dinner_idx = 0
     for day in range(1, 8):
-        if all_dinners:
-            dinner_idx = (day - 1) % len(all_dinners)
-            selected_dinner = all_dinners[dinner_idx]
-            meal = MealPlan(week=1, day=day, meal_type='Dinner', recipe_id=selected_dinner.id)
-            db.session.add(meal)
+        if (day, 'Dinner') not in locked_meals:
+            if all_dinners:
+                selected_dinner = all_dinners[dinner_idx % len(all_dinners)]
+                meal = MealPlan(week=1, day=day, meal_type='Dinner', recipe_id=selected_dinner.id)
+                db.session.add(meal)
+                dinner_idx += 1
 
     # Add desserts only if checkbox is checked
     if include_dessert:
-        all_desserts = list(Recipe.query.filter_by(category='Dessert').all())
+        all_desserts = [r for r in Recipe.query.filter_by(category='Dessert').all() if r.id not in locked_recipe_ids]
         random.shuffle(all_desserts)
+        dessert_idx = 0
         for day in range(1, 8):
-            if all_desserts:
-                dessert_idx = (day - 1) % len(all_desserts)
-                selected_dessert = all_desserts[dessert_idx]
-                meal = MealPlan(week=1, day=day, meal_type='Dessert', recipe_id=selected_dessert.id)
-                db.session.add(meal)
+            if (day, 'Dessert') not in locked_meals:
+                if all_desserts:
+                    selected_dessert = all_desserts[dessert_idx % len(all_desserts)]
+                    meal = MealPlan(week=1, day=day, meal_type='Dessert', recipe_id=selected_dessert.id)
+                    db.session.add(meal)
+                    dessert_idx += 1
 
     db.session.commit()
-    flash('Week randomized!', 'success')
+    flash('Week randomized! (Locked meals preserved)', 'success')
+    return redirect(url_for('meal_plan'))
+
+@app.route('/mealplan/lock/<int:day>/<meal_type>', methods=['POST'])
+def meal_plan_lock(day, meal_type):
+    meal = MealPlan.query.filter_by(week=1, day=day, meal_type=meal_type).first()
+    if meal:
+        meal.locked = not meal.locked
+        db.session.commit()
     return redirect(url_for('meal_plan'))
 
 @app.route('/mealplan/shopping', methods=['POST'])
