@@ -9,157 +9,140 @@
         <button onclick="window.print()" class="btn btn-outline-primary">
             <i class="bi bi-printer"></i> Print
         </button>
-        <a href="{{ url_for('meal_plan') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-calendar-week"></i> Edit Meal Plan
-        </a>
+        {% if items|selectattr('checked')|list|length > 0 %}
+        <form method="post" action="{{ url_for('shopping_clear_checked') }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Clear Checked
+            </button>
+        </form>
+        {% endif %}
     </div>
 </div>
 
-{% if meal_count == 0 %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle"></i> No meals in your plan.
-    <a href="{{ url_for('meal_plan') }}">Set up your meal plan</a> first.
-</div>
-{% else %}
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-bag"></i> Items to Buy ({{ items|length }})</span>
-                <small class="text-muted">From {{ meal_count }} meals</small>
+<!-- Add Item Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="post" action="{{ url_for('shopping_add') }}" class="row g-2">
+            <div class="col-md-5">
+                <input type="text" name="name" class="form-control" placeholder="Item name..." required>
             </div>
-            <table class="table table-striped mb-0" id="shoppingTable">
-                <thead>
-                    <tr>
-                        <th style="width: 40px;"><i class="bi bi-check-square"></i></th>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Unit</th>
-                        <th>Category</th>
+            <div class="col-md-2">
+                <input type="text" name="quantity" class="form-control" placeholder="Qty (e.g. 2 lbs)">
+            </div>
+            <div class="col-md-3">
+                <select name="category" class="form-select">
+                    <option value="Produce">Produce</option>
+                    <option value="Meat">Meat</option>
+                    <option value="Dairy">Dairy</option>
+                    <option value="Bakery">Bakery</option>
+                    <option value="Frozen">Frozen</option>
+                    <option value="Pantry">Pantry</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Other" selected>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-plus-lg"></i> Add
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Shopping List -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-bag"></i> Items ({{ items|rejectattr('checked')|list|length }} remaining)
+    </div>
+    <table class="table table-hover mb-0">
+        <tbody>
+            {% set current_category = namespace(value='') %}
+            {% for item in items %}
+                {% if item.category != current_category.value and not item.checked %}
+                    {% set current_category.value = item.category %}
+                    <tr class="table-secondary">
+                        <td colspan="4"><strong>{{ item.category }}</strong></td>
                     </tr>
-                </thead>
-                <tbody>
-                    {% set current_category = namespace(value='') %}
-                    {% for item in items %}
-                        {% if item.category != current_category.value %}
-                            {% set current_category.value = item.category %}
-                            <tr class="table-secondary">
-                                <td colspan="5"><strong>{{ item.category }}</strong></td>
-                            </tr>
-                        {% endif %}
-                        <tr class="item-row {{ 'use-up-highlight' if item.is_use_up else '' }}">
-                            <td><input type="checkbox" class="form-check-input item-checkbox"></td>
-                            <td class="item-name">{{ item.name }}</td>
-                            <td>
-                                {% if item.size %}
-                                    {{ item.qty|int }} x {{ item.size|int }}{{ item.unit.lower() }}
-                                {% else %}
-                                    {{ item.qty }}
-                                {% endif %}
-                            </td>
-                            <td>{% if not item.size %}{{ item.unit }}{% endif %}</td>
-                            <td><span class="badge bg-light text-dark">{{ item.category }}</span></td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="text-muted">No items needed</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if items %}
-            <div class="card-footer">
-                <div class="row">
-                    <div class="col text-end">
-                        <span class="text-muted">Subtotal: ${{ '%.2f'|format(subtotal) }}</span> |
-                        <span class="text-muted">Tax: ${{ '%.2f'|format(tax) }}</span> |
-                        <strong>Total: ${{ '%.2f'|format(total) }}</strong>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
+                {% endif %}
+                {% if not item.checked %}
+                <tr>
+                    <td style="width: 50px;">
+                        <form method="post" action="{{ url_for('shopping_check', id=item.id) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        </form>
+                    </td>
+                    <td>{{ item.name }}</td>
+                    <td class="text-muted">{{ item.quantity }}</td>
+                    <td style="width: 50px;">
+                        <form method="post" action="{{ url_for('shopping_delete', id=item.id) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endif %}
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-muted text-center py-4">
+                        <i class="bi bi-cart"></i> Your shopping list is empty
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Checked Items -->
+{% set checked_items = items|selectattr('checked')|list %}
+{% if checked_items|length > 0 %}
+<div class="card mt-4">
+    <div class="card-header text-muted">
+        <i class="bi bi-check-circle"></i> Checked Off ({{ checked_items|length }})
     </div>
-
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">
-                <i class="bi bi-recycle"></i> USE UP List
-            </div>
-            <div class="card-body">
-                <p class="small text-muted">Ingredients to prioritize using</p>
-
-                {% for item in use_up_items %}
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="badge bg-success">{{ item.ingredient.name }}</span>
-                    <form method="post" action="{{ url_for('useup_delete', id=item.id) }}" class="d-inline">
+    <table class="table table-sm mb-0">
+        <tbody>
+            {% for item in checked_items %}
+            <tr class="text-muted" style="text-decoration: line-through;">
+                <td style="width: 50px;">
+                    <form method="post" action="{{ url_for('shopping_check', id=item.id) }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </form>
+                </td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td style="width: 50px;">
+                    <form method="post" action="{{ url_for('shopping_delete', id=item.id) }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger">
                             <i class="bi bi-x"></i>
                         </button>
                     </form>
-                </div>
-                {% endfor %}
-
-                <hr>
-                <form method="post" action="{{ url_for('useup_add') }}">
-                    <div class="input-group">
-                        <select name="ingredient_id" class="form-select form-select-sm" required>
-                            <option value="">Add ingredient...</option>
-                            {% for ing in ingredients %}
-                            <option value="{{ ing.id }}">{{ ing.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit" class="btn btn-sm btn-success">
-                            <i class="bi bi-plus"></i>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-info-circle"></i> Legend
-            </div>
-            <div class="card-body">
-                <p class="small mb-1">
-                    <span class="badge use-up-highlight text-dark">Green</span> = USE UP ingredient
-                </p>
-                <p class="small mb-0 text-muted">
-                    Check items off as you shop
-                </p>
-            </div>
-        </div>
-    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endif %}
+
+<div class="mt-3">
+    <small class="text-muted">
+        <i class="bi bi-lightbulb"></i> Tip: Go to <a href="{{ url_for('recipes_list') }}">Recipes</a> and select recipes to add their ingredients here.
+    </small>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <style>
-.checked-off {
-    text-decoration: line-through;
-    opacity: 0.5;
-}
-.use-up-highlight {
-    background-color: #d4edda !important;
-}
 @media print {
-    .btn, .card-header form, .col-md-4 { display: none !important; }
-    .col-md-8 { width: 100% !important; }
+    .btn, form, .card-body:first-of-type, .text-muted.mt-3 { display: none !important; }
+    .card { border: none !important; }
+    .card-header { background: none !important; border-bottom: 2px solid #000 !important; }
 }
 </style>
-<script>
-document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
-    checkbox.addEventListener('change', function() {
-        var row = this.closest('tr');
-        if (this.checked) {
-            row.classList.add('checked-off');
-        } else {
-            row.classList.remove('checked-off');
-        }
-    });
-});
-</script>
 {% endblock %}

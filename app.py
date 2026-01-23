@@ -491,6 +491,13 @@ class UseUpItem(db.Model):
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredient.id'), nullable=False)
     ingredient = db.relationship('Ingredient')
 
+class ShoppingItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    quantity = db.Column(db.String(50), default='')
+    checked = db.Column(db.Boolean, default=False)
+    category = db.Column(db.String(50), default='Other')
+
 # ============================================
 # ROUTES - HOME
 # ============================================
@@ -974,25 +981,57 @@ def generate_shopping_list(recipe_ids, multipliers=None):
 
 @app.route('/shopping')
 def shopping_list():
-    # Get recipes from current meal plan
-    meals = MealPlan.query.filter_by(week=1).all()
-    recipe_ids = {meal.recipe_id for meal in meals if meal.recipe_id}
+    items = ShoppingItem.query.order_by(ShoppingItem.checked, ShoppingItem.category, ShoppingItem.name).all()
+    return render_template('shopping.html', items=items)
 
-    # Generate shopping list from meal plan
-    items, subtotal, tax, total = generate_shopping_list(recipe_ids)
+@app.route('/shopping/add', methods=['POST'])
+def shopping_add():
+    name = request.form.get('name', '').strip()
+    quantity = request.form.get('quantity', '').strip()
+    category = request.form.get('category', 'Other')
+    if name:
+        item = ShoppingItem(name=name, quantity=quantity, category=category)
+        db.session.add(item)
+        db.session.commit()
+    return redirect(url_for('shopping_list'))
 
-    # Get USE UP items for the sidebar
-    use_up_items = UseUpItem.query.all()
-    ingredients = Ingredient.query.order_by(Ingredient.name).all()
+@app.route('/shopping/check/<int:id>', methods=['POST'])
+def shopping_check(id):
+    item = ShoppingItem.query.get_or_404(id)
+    item.checked = not item.checked
+    db.session.commit()
+    return redirect(url_for('shopping_list'))
 
-    return render_template('shopping.html',
-                         items=items,
-                         subtotal=subtotal,
-                         tax=tax,
-                         total=total,
-                         use_up_items=use_up_items,
-                         ingredients=ingredients,
-                         meal_count=len(recipe_ids))
+@app.route('/shopping/delete/<int:id>', methods=['POST'])
+def shopping_delete(id):
+    item = ShoppingItem.query.get_or_404(id)
+    db.session.delete(item)
+    db.session.commit()
+    return redirect(url_for('shopping_list'))
+
+@app.route('/shopping/clear-checked', methods=['POST'])
+def shopping_clear_checked():
+    ShoppingItem.query.filter_by(checked=True).delete()
+    db.session.commit()
+    return redirect(url_for('shopping_list'))
+
+@app.route('/shopping/add-from-recipes', methods=['POST'])
+def shopping_add_from_recipes():
+    """Add items from selected recipes to shopping list"""
+    recipe_ids = request.form.getlist('recipes')
+    if recipe_ids:
+        items, _, _, _ = generate_shopping_list(recipe_ids)
+        for item in items:
+            qty_str = f"{item['qty']} {item['unit']}" if not item.get('size') else f"{int(item['qty'])} x {int(item['size'])}{item['unit'].lower()}"
+            shopping_item = ShoppingItem(
+                name=item['name'],
+                quantity=qty_str,
+                category=item['category']
+            )
+            db.session.add(shopping_item)
+        db.session.commit()
+        flash(f"Added {len(items)} items from recipes", "success")
+    return redirect(url_for('shopping_list'))
 
 @app.route('/shopping/generate', methods=['POST'])
 def shopping_generate():

@@ -27,7 +27,7 @@
     </div>
 </div>
 
-<form method="post" action="{{ url_for('shopping_generate') }}" id="recipeSelectForm">
+<form method="post" action="{{ url_for('shopping_add_from_recipes') }}" id="recipeSelectForm">
 <div class="row" id="recipeGrid">
     {% for recipe in recipes %}
     <div class="col-md-4 mb-3 recipe-card" data-name="{{ recipe.name.lower() }}">
