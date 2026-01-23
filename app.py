@@ -892,6 +892,11 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty = qty * 9
                 unit = 'CLOVE'
 
+            # Convert chicken thighs EA to weight (6 thighs = 1 lb = 453.592g)
+            if 'CHICKEN' in ing_name_upper and 'THIGH' in ing_name_upper and unit == 'EA':
+                qty = qty * 75.6  # ~75.6g per thigh
+                unit = 'G'
+
             # Normalize to base units for consolidation (ML for volume, G for weight)
             if unit in UNIT_CONVERSIONS:
                 base_unit, factor = UNIT_CONVERSIONS[unit]
