@@ -1129,13 +1129,17 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             packs_needed = max(1, -(-int(qty) // pack_size))
             leftover = (packs_needed * pack_size) - qty
 
-        # Calculate cost - item['cost'] is the per-LB cost for most items
+        # Calculate cost - item['cost'] is the per-unit cost
         unit_cost = item['cost']
-        cost_unit = 'LB'  # Most ingredients are priced per LB
+        ing_upper = key[0]
 
-        # Calculate total cost based on unit
-        if unit in ('LB', 'KG', 'G'):
-            # Convert to LB for cost calculation
+        # Handle canned/container items - cost is per CAN
+        if size:
+            cost_unit = 'CAN'
+            total_cost = round(unit_cost * qty, 2)
+        # Weight-based items - cost is per LB
+        elif unit in ('LB', 'KG', 'G'):
+            cost_unit = 'LB'
             if unit == 'KG':
                 qty_in_lb = qty * 2.20462
             elif unit == 'G':
@@ -1145,7 +1149,6 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             total_cost = round(unit_cost * qty_in_lb, 2)
         elif unit == 'EA':
             # Check if we have average weight for this item
-            ing_upper = key[0]
             avg_weight = None
             for name_key, weight in AVERAGE_WEIGHTS.items():
                 if name_key in ing_upper:
@@ -1153,16 +1156,17 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                     break
             if avg_weight:
                 # Convert EA to LB using average weight
+                cost_unit = 'LB'
                 qty_in_lb = (qty * avg_weight) / 453.592
                 total_cost = round(unit_cost * qty_in_lb, 2)
             else:
                 # No average weight, assume cost is per EA
-                total_cost = round(unit_cost * qty, 2)
                 cost_unit = 'EA'
+                total_cost = round(unit_cost * qty, 2)
         else:
             # For volume units (ML, CUP, etc.), assume cost is per unit
-            total_cost = round(unit_cost * qty, 2)
             cost_unit = unit
+            total_cost = round(unit_cost * qty, 2)
 
         shopping_items.append({
             'name': item['name'],
