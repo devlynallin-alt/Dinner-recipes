@@ -1040,7 +1040,11 @@ def generate_shopping_list(recipe_ids, multipliers=None):
 @app.route('/shopping')
 def shopping_list():
     items = ShoppingItem.query.order_by(ShoppingItem.checked, ShoppingItem.category, ShoppingItem.name).all()
-    return render_template('shopping.html', items=items)
+    # Get names of ingredients in pantry for highlighting
+    pantry_names = set(
+        ps.ingredient.name.lower() for ps in PantryStaple.query.options(joinedload(PantryStaple.ingredient)).all()
+    )
+    return render_template('shopping.html', items=items, pantry_names=pantry_names)
 
 @app.route('/shopping/add', methods=['POST'])
 def shopping_add():
@@ -1339,20 +1343,24 @@ def pantry_add_from_ingredient(id):
         flash('Already in pantry', 'info')
     return redirect(url_for('ingredients_list'))
 
-@app.route('/shopping/add-from-ingredient/<int:id>', methods=['POST'])
-def shopping_add_from_ingredient(id):
-    """Add ingredient to shopping list from ingredients page"""
-    ingredient = Ingredient.query.get_or_404(id)
-    # Check if already in shopping list
-    existing = ShoppingItem.query.filter_by(name=ingredient.name).first()
-    if not existing:
-        item = ShoppingItem(name=ingredient.name, category=ingredient.category)
-        db.session.add(item)
-        db.session.commit()
-        flash(f'Added {ingredient.name} to shopping list!', 'success')
+@app.route('/shopping/<int:id>/add-to-pantry', methods=['POST'])
+def shopping_add_to_pantry(id):
+    """Add shopping list item to pantry"""
+    item = ShoppingItem.query.get_or_404(id)
+    # Find matching ingredient by name
+    ingredient = Ingredient.query.filter(Ingredient.name.ilike(item.name)).first()
+    if ingredient:
+        existing = PantryStaple.query.filter_by(ingredient_id=ingredient.id).first()
+        if not existing:
+            staple = PantryStaple(ingredient_id=ingredient.id, have_it=True)
+            db.session.add(staple)
+            db.session.commit()
+            flash(f'Added {item.name} to pantry!', 'success')
+        else:
+            flash(f'{item.name} already in pantry', 'info')
     else:
-        flash(f'{ingredient.name} already in shopping list', 'info')
-    return redirect(url_for('ingredients_list'))
+        flash(f'Ingredient "{item.name}" not found - add it to Ingredients first', 'warning')
+    return redirect(url_for('shopping_list'))
 
 @app.route('/pantry/add-common', methods=['POST'])
 def pantry_add_common():

@@ -62,7 +62,7 @@
                 {% if item.category != current_category.value and not item.checked %}
                     {% set current_category.value = item.category %}
                     <tr class="table-secondary">
-                        <td colspan="4"><strong>{{ item.category }}</strong></td>
+                        <td colspan="5"><strong>{{ item.category }}</strong></td>
                     </tr>
                 {% endif %}
                 {% if not item.checked %}
@@ -76,8 +76,19 @@
                     </td>
                     <td>{{ item.name }}</td>
                     <td class="text-muted">{{ item.quantity }}</td>
-                    <td style="width: 50px;">
-                        <form method="post" action="{{ url_for('shopping_delete', id=item.id) }}">
+                    <td style="width: 100px;">
+                        {% if item.name.lower() not in pantry_names %}
+                        <form method="post" action="{{ url_for('shopping_add_to_pantry', id=item.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-success" title="Add to Pantry">
+                                <i class="bi bi-house-add"></i>
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="btn btn-sm btn-success disabled" title="In Pantry">
+                            <i class="bi bi-house-check"></i>
+                        </span>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('shopping_delete', id=item.id) }}" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="bi bi-x"></i>
                             </button>
@@ -87,7 +98,7 @@
                 {% endif %}
             {% else %}
                 <tr>
-                    <td colspan="4" class="text-muted text-center py-4">
+                    <td colspan="5" class="text-muted text-center py-4">
                         <i class="bi bi-cart"></i> Your shopping list is empty
                     </td>
                 </tr>
