@@ -130,7 +130,7 @@
                 </select>
             </td>
             <td>
-                <input type="number" name="quantity" value="{{ ri.quantity }}" step="0.01" class="form-control form-control-sm" style="width: 60px;">
+                <input type="text" name="quantity" value="{{ ri.quantity|fraction }}" class="form-control form-control-sm" style="width: 70px;" placeholder="e.g. 2/3">
             </td>
             <td>
                 <input type="number" name="size" value="{{ ri.size if ri.size else '' }}" step="1" class="form-control form-control-sm" style="width: 70px;" placeholder="e.g. 400">
@@ -172,7 +172,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <input type="number" name="quantity" class="form-control" placeholder="Qty" step="0.01" required>
+                    <input type="text" name="quantity" class="form-control" placeholder="Qty (e.g. 2/3)" required>
                 </div>
                 <div class="col-md-2">
                     <input type="number" name="size" class="form-control" placeholder="Size" step="1">

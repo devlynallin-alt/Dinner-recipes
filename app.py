@@ -1,12 +1,67 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
+from fractions import Fraction
 import random
 import os
 import re
 import json
 import requests
 from bs4 import BeautifulSoup
+
+# Common fractions for display
+COMMON_FRACTIONS = {
+    0.125: '1/8', 0.25: '1/4', 0.333: '1/3', 0.375: '3/8',
+    0.5: '1/2', 0.625: '5/8', 0.667: '2/3', 0.75: '3/4', 0.875: '7/8'
+}
+
+def parse_fraction(text):
+    """Parse fraction string like '2/3' or '1 1/2' to float"""
+    if not text:
+        return 0.0
+    text = str(text).strip()
+    # Already a number
+    try:
+        return float(text)
+    except ValueError:
+        pass
+    # Handle mixed fractions like "1 1/2"
+    parts = text.split()
+    total = 0.0
+    for part in parts:
+        if '/' in part:
+            try:
+                num, denom = part.split('/')
+                total += float(num) / float(denom)
+            except (ValueError, ZeroDivisionError):
+                pass
+        else:
+            try:
+                total += float(part)
+            except ValueError:
+                pass
+    return total if total > 0 else 0.0
+
+def float_to_fraction(value):
+    """Convert float to fraction string for display"""
+    if value is None or value == 0:
+        return '0'
+    # Check if it's a whole number
+    if value == int(value):
+        return str(int(value))
+    # Split into whole and decimal parts
+    whole = int(value)
+    decimal = value - whole
+    # Check common fractions (with tolerance)
+    for dec, frac in COMMON_FRACTIONS.items():
+        if abs(decimal - dec) < 0.02:
+            if whole > 0:
+                return f"{whole} {frac}"
+            return frac
+    # Fall back to decimal
+    if whole > 0:
+        return f"{value:.2f}".rstrip('0').rstrip('.')
+    return f"{value:.2f}".rstrip('0').rstrip('.')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dinner-recipes-secret-key'
@@ -17,6 +72,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 
 # Create upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Register Jinja filter for fraction display
+app.jinja_env.filters['fraction'] = float_to_fraction
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -579,7 +637,7 @@ def recipe_delete(id):
 def recipe_ingredient_add(id):
     recipe = Recipe.query.get_or_404(id)
     ingredient_id = int(request.form['ingredient_id'])
-    quantity = float(request.form['quantity'])
+    quantity = parse_fraction(request.form['quantity'])
     size = float(request.form['size']) if request.form.get('size') else None
     unit = request.form['unit']
 
@@ -593,7 +651,7 @@ def recipe_ingredient_add(id):
 def recipe_ingredient_update(recipe_id, ri_id):
     ri = RecipeIngredient.query.get_or_404(ri_id)
     ri.ingredient_id = int(request.form.get('ingredient_id', ri.ingredient_id))
-    ri.quantity = float(request.form.get('quantity', ri.quantity))
+    ri.quantity = parse_fraction(request.form.get('quantity', ri.quantity))
     ri.size = float(request.form['size']) if request.form.get('size') else None
     ri.unit = request.form.get('unit', ri.unit)
     db.session.commit()
