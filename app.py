@@ -1216,11 +1216,16 @@ def ingredients_list():
         ri.ingredient_id for ri in RecipeIngredient.query.with_entities(RecipeIngredient.ingredient_id).distinct()
     )
 
+    # Get IDs of ingredients in pantry
+    pantry_ids = set(
+        ps.ingredient_id for ps in PantryStaple.query.with_entities(PantryStaple.ingredient_id).all()
+    )
+
     # Add 'used_in_recipes' flag to each ingredient
     for ing in ingredients:
         ing.used_in_recipes = ing.id in used_ingredient_ids
 
-    return render_template('ingredients.html', ingredients=ingredients)
+    return render_template('ingredients.html', ingredients=ingredients, pantry_ids=pantry_ids)
 
 @app.route('/ingredient/add', methods=['POST'])
 def ingredient_add():
@@ -1321,13 +1326,28 @@ def pantry_delete(id):
     db.session.commit()
     return redirect(url_for('pantry_list'))
 
+@app.route('/pantry/add-from-ingredient/<int:id>', methods=['POST'])
+def pantry_add_from_ingredient(id):
+    """Add ingredient to pantry from ingredients page"""
+    existing = PantryStaple.query.filter_by(ingredient_id=id).first()
+    if not existing:
+        staple = PantryStaple(ingredient_id=id, have_it=True)
+        db.session.add(staple)
+        db.session.commit()
+        flash('Added to pantry!', 'success')
+    else:
+        flash('Already in pantry', 'info')
+    return redirect(url_for('ingredients_list'))
+
 @app.route('/pantry/add-common', methods=['POST'])
 def pantry_add_common():
     common_staples = [
-        'Salt', 'Pepper', 'Oil', 'Olive Oil', 'Butter', 'Garlic', 'Onion', 'Flour', 'Sugar',
+        'Salt', 'Pepper', 'Oil', 'Olive Oil', 'Cooking Oil', 'Vegetable Oil',
+        'Butter', 'Garlic', 'Onion', 'Flour', 'Sugar',
         'Vanilla Extract', 'Vanilla', 'Baking Powder', 'Baking Soda',
-        'Paprika', 'Cumin', 'Oregano', 'Basil', 'Thyme', 'Rosemary', 'Cinnamon',
-        'Chili Powder', 'Cayenne', 'Italian Seasoning', 'Bay Leaves'
+        'Paprika', 'Cumin', 'Oregano', 'Basil', 'Thyme', 'Rosemary', 'Cinnamon', 'Ground Cinnamon',
+        'Chili Powder', 'Cayenne', 'Italian Seasoning', 'Bay Leaves',
+        'Hot Sauce', 'Worcestershire Sauce', 'Panko Breadcrumbs', 'Panko'
     ]
     added = 0
     for name in common_staples:

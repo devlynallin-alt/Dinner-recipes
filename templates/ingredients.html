@@ -61,6 +61,17 @@
                 <td class="editable" data-field="default_unit" data-type="unit">{{ ing.default_unit }}</td>
                 <td class="editable" data-field="cost" data-type="money">${{ '%.2f'|format(ing.cost) }}</td>
                 <td>
+                    {% if ing.id not in pantry_ids %}
+                    <form method="post" action="{{ url_for('pantry_add_from_ingredient', id=ing.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-success" title="Add to Pantry">
+                            <i class="bi bi-house-add"></i>
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="btn btn-sm btn-success disabled" title="In Pantry">
+                        <i class="bi bi-house-check"></i>
+                    </span>
+                    {% endif %}
                     <form method="post" action="{{ url_for('ingredient_delete', id=ing.id) }}" class="d-inline" onsubmit="return confirm('Delete this ingredient?');">
                         <button type="submit" class="btn btn-sm btn-outline-danger">
                             <i class="bi bi-trash"></i>
