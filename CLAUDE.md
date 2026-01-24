@@ -60,7 +60,7 @@ FLASK_DEBUG=0
 1. **Keep behavior identical** unless the task explicitly asks for behavior changes
 2. **No schema changes without migrations** - use `flask db migrate`, never raw ALTER TABLE
 3. **Never bypass security utilities** - always use `safe_fetch()`, `validate_and_process_image()`, sanitizers
-4. **Test your changes** - run `python -m pytest` (or manual checklist below if no tests exist yet)
+4. **Test your changes** - run `python tests/smoke.py` (or manual checklist below)
 5. **Do not add new logic to app.py** unless explicitly instructed - extract to `services/`, `utils/`, `models/`
 
 ### When Modifying Critical Code
@@ -78,6 +78,7 @@ These areas require extra care:
 - `VOLUME_TO_ML`, `WEIGHT_TO_G` conversion constants must not be modified
 - Do not "normalize", "simplify", or "clean up" unit conversion math
 - Cost formula logic must remain as-is unless explicitly requested
+- Never recompute historical costs retroactively
 
 **Rule**: If you change any of these, verify with the checklist below.
 
