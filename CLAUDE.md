@@ -60,8 +60,8 @@ FLASK_DEBUG=0
 1. **Keep behavior identical** unless the task explicitly asks for behavior changes
 2. **No schema changes without migrations** - use `flask db migrate`, never raw ALTER TABLE
 3. **Never bypass security utilities** - always use `safe_fetch()`, `validate_and_process_image()`, sanitizers
-4. **Test your changes** - run the verification checklist below
-5. **Don't grow app.py** - extract logic to `services/`, `utils/`, `models/` when touching related code
+4. **Test your changes** - run `python -m pytest` (or manual checklist below if no tests exist yet)
+5. **Do not add new logic to app.py** unless explicitly instructed - extract to `services/`, `utils/`, `models/`
 
 ### When Modifying Critical Code
 
@@ -73,6 +73,11 @@ These areas require extra care:
 | Cost calculations | `def calculate_ingredient_cost` | Wrong totals |
 | Ingredient parsing | `def parse_ingredient` | Import failures |
 | Shopping aggregation | `def generate_shopping_list` | Wrong quantities |
+
+**Invariants** (do not change without explicit instruction):
+- `VOLUME_TO_ML`, `WEIGHT_TO_G` conversion constants must not be modified
+- Do not "normalize", "simplify", or "clean up" unit conversion math
+- Cost formula logic must remain as-is unless explicitly requested
 
 **Rule**: If you change any of these, verify with the checklist below.
 
@@ -327,6 +332,7 @@ os.environ['FLASK_ENV'] = 'production'
 - SQLite works fine for single-user/low-traffic
 - Database file: `instance/recipes.db`
 - **Backup regularly** - it's just a file
+- **Avoid concurrent write patterns** - SQLite is single-writer (no background jobs, async imports, or parallel writes)
 
 ---
 
