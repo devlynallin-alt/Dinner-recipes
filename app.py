@@ -63,6 +63,27 @@ def float_to_fraction(value):
         return f"{value:.2f}".rstrip('0').rstrip('.')
     return f"{value:.2f}".rstrip('0').rstrip('.')
 
+def format_shopping_qty(item):
+    """Format quantity string for shopping list, with LB/KG conversion"""
+    qty = item['qty']
+    unit = item['unit']
+    size = item.get('size')
+
+    if size:
+        return f"{int(qty)} x {int(size)}{unit.lower()}"
+
+    # For LB, also show KG equivalent
+    if unit == 'LB':
+        kg = qty * 0.453592
+        return f"{qty:.2f} LB ({kg:.2f} KG)"
+
+    # For KG, also show LB equivalent
+    if unit == 'KG':
+        lb = qty / 0.453592
+        return f"{qty:.2f} KG ({lb:.2f} LB)"
+
+    return f"{qty} {unit}"
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dinner-recipes-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recipes.db'
@@ -1097,7 +1118,7 @@ def shopping_add_from_recipes():
 
         items, _, _, _ = generate_shopping_list(recipe_ids)
         for item in items:
-            qty_str = f"{item['qty']} {item['unit']}" if not item.get('size') else f"{int(item['qty'])} x {int(item['size'])}{item['unit'].lower()}"
+            qty_str = format_shopping_qty(item)
             shopping_item = ShoppingItem(
                 name=item['name'],
                 quantity=qty_str,
@@ -1220,7 +1241,7 @@ def shopping_from_mealplan():
 
     items, _, _, _ = generate_shopping_list(recipe_ids)
     for item in items:
-        qty_str = f"{item['qty']} {item['unit']}" if not item.get('size') else f"{int(item['qty'])} x {int(item['size'])}{item['unit'].lower()}"
+        qty_str = format_shopping_qty(item)
         shopping_item = ShoppingItem(
             name=item['name'],
             quantity=qty_str,
