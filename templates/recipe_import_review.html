@@ -1,0 +1,368 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Ingredients - {{ recipe_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-list-check"></i> Review Ingredients</h2>
+        <p class="text-muted mb-0">Match parsed ingredients to existing ones or create new entries.</p>
+    </div>
+    <div class="input-group" style="width: 280px;">
+        <input type="text" id="mlInput" class="form-control form-control-sm" placeholder="ML">
+        <span class="input-group-text">=</span>
+        <input type="text" id="cupsOutput" class="form-control form-control-sm" readonly placeholder="Cups">
+        <button class="btn btn-outline-secondary btn-sm" type="button" id="swapBtn" title="Swap">
+            <i class="bi bi-arrow-left-right"></i>
+        </button>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('recipe_import_save') }}">
+    <!-- Hidden fields for recipe data -->
+    <input type="hidden" name="name" value="{{ recipe_name }}">
+    <input type="hidden" name="category" value="{{ category }}">
+    <input type="hidden" name="difficulty" value="{{ difficulty }}">
+    <input type="hidden" name="protein_type" value="{{ protein_type }}">
+    <input type="hidden" name="servings" value="{{ servings }}">
+    <input type="hidden" name="instructions" value="{{ instructions }}">
+    <input type="hidden" name="source_url" value="{{ source_url }}">
+    <input type="hidden" name="image_url" value="{{ image_url }}">
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><strong>{{ recipe_name }}</strong> - {{ parsed_ingredients|length }} ingredients</span>
+            <span class="badge bg-info">{{ category }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 5%">
+                                <input type="checkbox" class="form-check-input" id="selectAll" checked title="Include all">
+                            </th>
+                            <th style="width: 25%">Parsed Text</th>
+                            <th style="width: 9%">Qty</th>
+                            <th style="width: 9%">Unit</th>
+                            <th style="width: 32%">Match To Ingredient</th>
+                            <th style="width: 12%">Converts To</th>
+                            <th style="width: 8%">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in parsed_ingredients %}
+                        <tr class="ingredient-row" data-index="{{ loop.index0 }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input include-checkbox"
+                                       name="include_{{ loop.index0 }}" value="1" checked>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ item.raw_text }}</small>
+                                <br>
+                                <strong>{{ item.normalized }}</strong>
+                            </td>
+                            <td>
+                                <input type="text"
+                                       name="qty_{{ loop.index0 }}"
+                                       value="{{ item.qty }}"
+                                       class="form-control form-control-sm qty-input"
+                                       placeholder="e.g. 1 1/2">
+                            </td>
+                            <td>
+                                <select name="unit_{{ loop.index0 }}" class="form-select form-select-sm unit-select">
+                                    {% for unit in ['EA', 'G', 'KG', 'LB', 'OZ', 'ML', 'L', 'CUP', 'TBSP', 'TSP', 'CLOVE', 'CAN'] %}
+                                    <option value="{{ unit }}" {% if unit == item.unit %}selected{% endif %}>{{ unit }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="ingredient_{{ loop.index0 }}" class="form-select form-select-sm ingredient-select" data-index="{{ loop.index0 }}">
+                                    <option value="new">+ Create New</option>
+                                    {% if item.match %}
+                                    <option value="{{ item.match.id }}" selected data-base-unit="{{ item.match.base_unit or 'EA' }}">{{ item.match.name }} ({{ item.match_type }})</option>
+                                    {% endif %}
+                                    <optgroup label="Suggestions">
+                                    {% for sug in item.suggestions %}
+                                        {% if not item.match or sug.id != item.match.id %}
+                                        <option value="{{ sug.id }}" data-base-unit="{{ sug.base_unit or 'EA' }}">{{ sug.name }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                    </optgroup>
+                                    <optgroup label="All Ingredients">
+                                    {% for ing in all_ingredients %}
+                                        {% if (not item.match or ing.id != item.match.id) and ing.id not in item.suggestion_ids %}
+                                        <option value="{{ ing.id }}" data-base-unit="{{ ing.base_unit or 'EA' }}">{{ ing.name }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                    </optgroup>
+                                </select>
+                                <input type="text" name="newname_{{ loop.index0 }}"
+                                       class="form-control form-control-sm mt-1 new-name-input"
+                                       value="{{ item.normalized }}"
+                                       placeholder="New ingredient name"
+                                       style="{% if item.match %}display:none{% endif %}">
+                            </td>
+                            <td class="conversion-preview">
+                                {% if item.match and item.converted_qty and item.base_unit and item.unit != item.base_unit %}
+                                <span class="badge bg-info">
+                                    {{ '%.2f'|format(item.converted_qty) }} {{ item.base_unit }}
+                                </span>
+                                {% elif item.match %}
+                                <span class="text-muted small">No conversion</span>
+                                {% else %}
+                                <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.match %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Matched
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-plus-circle"></i> New
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-lg"></i> Save Recipe
+        </button>
+        <a href="{{ url_for('recipe_import') }}" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-arrow-left"></i> Back to Edit
+        </a>
+    </div>
+
+    <div class="card bg-light">
+        <div class="card-body">
+            <h6 class="card-title"><i class="bi bi-info-circle"></i> How This Works</h6>
+            <ul class="mb-0 small">
+                <li><strong>Matched</strong> - Found an existing ingredient that matches. Recipe will use this ingredient.</li>
+                <li><strong>New</strong> - No match found. A new ingredient will be created with this name.</li>
+                <li><strong>Converts To</strong> - Shows what the quantity will be after converting to the ingredient's base unit.</li>
+                <li>Use the dropdown to change matches or select a different existing ingredient.</li>
+                <li>Creating fewer new ingredients = cleaner database and better shopping list consolidation.</li>
+            </ul>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.ingredient-row.excluded {
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+.ingredient-row.excluded input,
+.ingredient-row.excluded select {
+    pointer-events: none;
+}
+.ingredient-row.excluded .include-checkbox {
+    pointer-events: auto;
+}
+</style>
+<script>
+// Volume conversions to ML
+const VOLUME_TO_ML = {'ML': 1, 'L': 1000, 'CUP': 236.588, 'TBSP': 14.787, 'TSP': 4.929};
+// Weight conversions to G
+const WEIGHT_TO_G = {'G': 1, 'KG': 1000, 'OZ': 28.3495, 'LB': 453.592};
+
+function convertToBaseUnit(qty, fromUnit, baseUnit) {
+    fromUnit = fromUnit.toUpperCase();
+    baseUnit = baseUnit.toUpperCase();
+
+    if (fromUnit === baseUnit) return qty;
+
+    // Convert volume units
+    if (VOLUME_TO_ML[fromUnit] && (baseUnit === 'ML' || baseUnit === 'L')) {
+        const ml = qty * VOLUME_TO_ML[fromUnit];
+        if (baseUnit === 'L') return (ml / 1000).toFixed(2);
+        return ml.toFixed(2);
+    }
+
+    // Convert weight units
+    if (WEIGHT_TO_G[fromUnit] && (baseUnit === 'G' || baseUnit === 'KG' || baseUnit === 'LB' || baseUnit === 'OZ')) {
+        const grams = qty * WEIGHT_TO_G[fromUnit];
+        if (baseUnit === 'KG') return (grams / 1000).toFixed(2);
+        if (baseUnit === 'LB') return (grams / 453.592).toFixed(2);
+        if (baseUnit === 'OZ') return (grams / 28.3495).toFixed(2);
+        return grams.toFixed(2);
+    }
+
+    // Can't convert
+    return null;
+}
+
+function updateConversionPreview(row) {
+    const select = row.querySelector('.ingredient-select');
+    const qtyInput = row.querySelector('.qty-input');
+    const unitSelect = row.querySelector('.unit-select');
+    const conversionCell = row.querySelector('.conversion-preview');
+
+    const selectedOption = select.options[select.selectedIndex];
+    const baseUnit = selectedOption.dataset.baseUnit;
+    const qty = parseFloat(qtyInput.value) || 0;
+    const unit = unitSelect.value;
+
+    if (select.value === 'new' || !baseUnit) {
+        conversionCell.innerHTML = '<span class="text-muted small">-</span>';
+        return;
+    }
+
+    if (unit === baseUnit) {
+        conversionCell.innerHTML = '<span class="text-muted small">No conversion</span>';
+        return;
+    }
+
+    const converted = convertToBaseUnit(qty, unit, baseUnit);
+    if (converted !== null) {
+        conversionCell.innerHTML = `<span class="badge bg-info">${converted} ${baseUnit}</span>`;
+    } else {
+        conversionCell.innerHTML = '<span class="text-muted small">N/A</span>';
+    }
+}
+
+// Update badge and show/hide name input when selection changes
+document.querySelectorAll('.ingredient-select').forEach(select => {
+    select.addEventListener('change', function() {
+        const row = this.closest('tr');
+        const badge = row.querySelector('td:last-child .badge');
+        const nameInput = row.querySelector('.new-name-input');
+        if (this.value === 'new') {
+            badge.className = 'badge bg-warning text-dark';
+            badge.innerHTML = '<i class="bi bi-plus-circle"></i> New';
+            nameInput.style.display = 'block';
+        } else {
+            badge.className = 'badge bg-success';
+            badge.innerHTML = '<i class="bi bi-check-circle"></i> Matched';
+            nameInput.style.display = 'none';
+        }
+        updateConversionPreview(row);
+    });
+});
+
+// Update conversion preview when qty or unit changes
+document.querySelectorAll('.qty-input, .unit-select').forEach(input => {
+    input.addEventListener('change', function() {
+        updateConversionPreview(this.closest('tr'));
+    });
+    input.addEventListener('input', function() {
+        updateConversionPreview(this.closest('tr'));
+    });
+});
+
+// Handle include/exclude checkboxes
+document.querySelectorAll('.include-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const row = this.closest('tr');
+        if (this.checked) {
+            row.classList.remove('excluded');
+        } else {
+            row.classList.add('excluded');
+        }
+        updateSelectAll();
+    });
+});
+
+// Select all checkbox
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.include-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = this.checked;
+        const row = cb.closest('tr');
+        if (this.checked) {
+            row.classList.remove('excluded');
+        } else {
+            row.classList.add('excluded');
+        }
+    });
+});
+
+function updateSelectAll() {
+    const checkboxes = document.querySelectorAll('.include-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+    const selectAll = document.getElementById('selectAll');
+    selectAll.checked = allChecked;
+    selectAll.indeterminate = someChecked && !allChecked;
+}
+
+// ML to Cups converter with fractions
+const ML_PER_CUP = 236.588;
+let convertMode = 'mlToCups';
+
+function toFraction(decimal) {
+    if (decimal === 0) return '0';
+    const fractions = [
+        { val: 1/8, str: '1/8' },
+        { val: 1/4, str: '1/4' },
+        { val: 1/3, str: '1/3' },
+        { val: 3/8, str: '3/8' },
+        { val: 1/2, str: '1/2' },
+        { val: 5/8, str: '5/8' },
+        { val: 2/3, str: '2/3' },
+        { val: 3/4, str: '3/4' },
+        { val: 7/8, str: '7/8' }
+    ];
+    const whole = Math.floor(decimal);
+    const remainder = decimal - whole;
+    if (remainder < 0.0625) return whole > 0 ? whole.toString() : '0';
+    if (remainder > 0.9375) return (whole + 1).toString();
+    let closest = fractions.reduce((a, b) =>
+        Math.abs(remainder - a.val) < Math.abs(remainder - b.val) ? a : b
+    );
+    return whole > 0 ? whole + ' ' + closest.str : closest.str;
+}
+
+function fromFraction(str) {
+    let total = 0;
+    for (const part of str.trim().split(' ')) {
+        if (part.includes('/')) {
+            const [num, den] = part.split('/').map(Number);
+            total += num / den;
+        } else {
+            total += parseFloat(part) || 0;
+        }
+    }
+    return total;
+}
+
+document.getElementById('mlInput').addEventListener('input', function() {
+    if (convertMode === 'mlToCups') {
+        const ml = parseFloat(this.value) || 0;
+        const cups = ml / ML_PER_CUP;
+        document.getElementById('cupsOutput').value = cups > 0 ? toFraction(cups) + ' cups' : '';
+    } else {
+        const cups = fromFraction(this.value);
+        const ml = cups * ML_PER_CUP;
+        document.getElementById('cupsOutput').value = ml > 0 ? Math.round(ml) + ' ml' : '';
+    }
+});
+
+document.getElementById('swapBtn').addEventListener('click', function() {
+    const mlInput = document.getElementById('mlInput');
+    const cupsOutput = document.getElementById('cupsOutput');
+    if (convertMode === 'mlToCups') {
+        convertMode = 'cupsToMl';
+        mlInput.placeholder = 'Cups (e.g. 1 1/2)';
+        cupsOutput.placeholder = 'ML';
+    } else {
+        convertMode = 'mlToCups';
+        mlInput.placeholder = 'ML';
+        cupsOutput.placeholder = 'Cups';
+    }
+    mlInput.value = '';
+    cupsOutput.value = '';
+});
+</script>
+{% endblock %}
