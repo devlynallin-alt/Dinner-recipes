@@ -63,10 +63,11 @@
                 {% if item.category != current_category.value and not item.checked %}
                     {% set current_category.value = item.category %}
                     <tr class="table-secondary">
-                        <td colspan="5"><strong>{{ item.category }}</strong></td>
+                        <td colspan="6"><strong>{{ item.category }}</strong></td>
                     </tr>
                 {% endif %}
                 {% if not item.checked %}
+                {% set qty_parts = item.quantity.split('|') if '|' in item.quantity else [item.quantity, ''] %}
                 <tr>
                     <td style="width: 50px;">
                         <form method="post" action="{{ url_for('shopping_check', id=item.id) }}">
@@ -76,7 +77,8 @@
                         </form>
                     </td>
                     <td>{{ item.name }}</td>
-                    <td class="text-muted">{{ item.quantity }}</td>
+                    <td class="text-muted" style="width: 100px;">{{ qty_parts[0] }}</td>
+                    <td class="text-muted" style="width: 100px;">{{ qty_parts[1] if qty_parts|length > 1 else '' }}</td>
                     <td style="width: 100px;">
                         {% if item.name.lower() not in pantry_names %}
                         <form method="post" action="{{ url_for('shopping_add_to_pantry', id=item.id) }}" class="d-inline">
@@ -99,7 +101,7 @@
                 {% endif %}
             {% else %}
                 <tr>
-                    <td colspan="5" class="text-muted text-center py-4">
+                    <td colspan="6" class="text-muted text-center py-4">
                         <i class="bi bi-cart"></i> Your shopping list is empty
                     </td>
                 </tr>
@@ -118,6 +120,7 @@
     <table class="table table-sm mb-0">
         <tbody>
             {% for item in checked_items %}
+            {% set qty_parts = item.quantity.split('|') if '|' in item.quantity else [item.quantity, ''] %}
             <tr class="text-muted" style="text-decoration: line-through;">
                 <td style="width: 50px;">
                     <form method="post" action="{{ url_for('shopping_check', id=item.id) }}">
@@ -127,7 +130,8 @@
                     </form>
                 </td>
                 <td>{{ item.name }}</td>
-                <td>{{ item.quantity }}</td>
+                <td>{{ qty_parts[0] }}</td>
+                <td>{{ qty_parts[1] if qty_parts|length > 1 else '' }}</td>
                 <td style="width: 50px;">
                     <form method="post" action="{{ url_for('shopping_delete', id=item.id) }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger">

@@ -72,34 +72,34 @@ def format_shopping_qty(item):
     if size:
         return f"{int(qty)} x {int(size)}{unit.lower()}"
 
-    # For LB, show as KG (LB) - KG on left, LB on right
+    # For LB, show as KG | LB
     if unit == 'LB':
         kg = qty * 0.453592
-        return f"{kg:.2f} KG ({qty:.2f} LB)"
+        return f"{kg:.2f} KG|{qty:.2f} LB"
 
-    # For KG, show as KG (LB) - KG on left, LB on right
+    # For KG, show as KG | LB
     if unit == 'KG':
         lb = qty / 0.453592
-        return f"{qty:.2f} KG ({lb:.2f} LB)"
+        return f"{qty:.2f} KG|{lb:.2f} LB"
 
     # For ML, convert based on amount
     if unit == 'ML':
         # Small amounts: use TSP or TBSP
         if qty <= 5:
             tsp = qty / 4.929
-            return f"{float_to_fraction(tsp)} tsp ({qty:.0f} ML)"
+            return f"{float_to_fraction(tsp)} tsp|{qty:.0f} ML"
         elif qty <= 30:
             tbsp = qty / 14.787
-            return f"{float_to_fraction(tbsp)} tbsp ({qty:.0f} ML)"
+            return f"{float_to_fraction(tbsp)} tbsp|{qty:.0f} ML"
         else:
-            # Larger amounts: cups on left, ML on right
+            # Larger amounts: cups | ML
             cups = qty / 236.588
-            return f"{float_to_fraction(cups)} cups ({qty:.0f} ML)"
+            return f"{float_to_fraction(cups)} cups|{qty:.0f} ML"
 
-    # For CUP, show cups (ML) - cups on left, ML on right
+    # For CUP, show cups | ML
     if unit == 'CUP':
         ml = qty * 236.588
-        return f"{float_to_fraction(qty)} cups ({ml:.0f} ML)"
+        return f"{float_to_fraction(qty)} cups|{ml:.0f} ML"
 
     return f"{qty} {unit}"
 
