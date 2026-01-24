@@ -963,6 +963,12 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty = qty * 75.6  # ~75.6g per thigh
                 unit = 'G'
 
+            # Convert cheese from cups to weight (1 LB = 4 cups shredded)
+            # 1 cup shredded cheese = 0.25 LB = 113.4g
+            if 'CHEESE' in ing_name_upper and unit in ('CUP', 'CUPS'):
+                qty = qty * 113.4  # Convert cups to grams
+                unit = 'G'
+
             # Normalize to base units for consolidation (ML for volume, G for weight)
             if unit in UNIT_CONVERSIONS:
                 base_unit, factor = UNIT_CONVERSIONS[unit]
@@ -1002,7 +1008,11 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                     qty, unit = qty / 236.588, 'CUP'
             # Weight: G -> KG if large, or -> LB for medium amounts
             elif unit == 'G':
-                if qty >= 1000:
+                ing_name_upper = key[0]
+                # Cheese always converts to LB (we buy by the pound)
+                if 'CHEESE' in ing_name_upper:
+                    qty, unit = qty / 453.592, 'LB'
+                elif qty >= 1000:
                     qty, unit = qty / 1000, 'KG'
                 elif qty >= 454:  # About 1 lb
                     qty, unit = qty / 453.592, 'LB'
