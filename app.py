@@ -595,6 +595,7 @@ class ShoppingItem(db.Model):
     quantity = db.Column(db.String(50), default='')
     checked = db.Column(db.Boolean, default=False)
     category = db.Column(db.String(50), default='Other')
+    cost = db.Column(db.Float, default=0.0)
 
 # ============================================
 # ROUTES - HOME
@@ -1142,7 +1143,8 @@ def shopping_add_from_recipes():
             shopping_item = ShoppingItem(
                 name=item['name'],
                 quantity=qty_str,
-                category=item['category']
+                category=item['category'],
+                cost=item['cost']
             )
             db.session.add(shopping_item)
         db.session.commit()
@@ -1265,7 +1267,8 @@ def shopping_from_mealplan():
         shopping_item = ShoppingItem(
             name=item['name'],
             quantity=qty_str,
-            category=item['category']
+            category=item['category'],
+            cost=item['cost']
         )
         db.session.add(shopping_item)
     db.session.commit()
