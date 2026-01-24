@@ -231,6 +231,14 @@ AVERAGE_WEIGHTS = {
     'BUN': 60,              # 1 bun = 60g
 }
 
+# Items priced per EA (not per LB) - don't convert to weight for cost
+COST_PER_EA = {
+    'LEMON', 'LIME', 'GREEN ONION', 'SCALLION', 'AVOCADO',
+    'LETTUCE', 'ROMAINE', 'CABBAGE', 'CAULIFLOWER', 'BROCCOLI',
+    'CUCUMBER', 'CELERY', 'CORN', 'BANANA', 'ORANGE', 'APPLE',
+    'TORTILLA', 'BREAD', 'BUN', 'EGG',
+}
+
 # Preferred units for specific ingredients (keyword -> preferred unit)
 # Liquids should be in ML, meats in G, oils in TBSP
 INGREDIENT_PREFERRED_UNITS = {
@@ -1148,21 +1156,28 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty_in_lb = qty
             total_cost = round(unit_cost * qty_in_lb, 2)
         elif unit == 'EA':
-            # Check if we have average weight for this item
-            avg_weight = None
-            for name_key, weight in AVERAGE_WEIGHTS.items():
-                if name_key in ing_upper:
-                    avg_weight = weight
-                    break
-            if avg_weight:
-                # Convert EA to LB using average weight
-                cost_unit = 'LB'
-                qty_in_lb = (qty * avg_weight) / 453.592
-                total_cost = round(unit_cost * qty_in_lb, 2)
-            else:
-                # No average weight, assume cost is per EA
+            # Check if this item is priced per EA (not per LB)
+            is_per_ea = any(ea_item in ing_upper for ea_item in COST_PER_EA)
+            if is_per_ea:
+                # Cost is per EA, no conversion needed
                 cost_unit = 'EA'
                 total_cost = round(unit_cost * qty, 2)
+            else:
+                # Check if we have average weight for this item
+                avg_weight = None
+                for name_key, weight in AVERAGE_WEIGHTS.items():
+                    if name_key in ing_upper:
+                        avg_weight = weight
+                        break
+                if avg_weight:
+                    # Convert EA to LB using average weight
+                    cost_unit = 'LB'
+                    qty_in_lb = (qty * avg_weight) / 453.592
+                    total_cost = round(unit_cost * qty_in_lb, 2)
+                else:
+                    # No average weight, assume cost is per EA
+                    cost_unit = 'EA'
+                    total_cost = round(unit_cost * qty, 2)
         else:
             # For volume units - cost is per L (liter)
             cost_unit = 'L'
