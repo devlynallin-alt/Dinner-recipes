@@ -1123,7 +1123,8 @@ def shopping_delete(id):
 
 @app.route('/shopping/clear-checked', methods=['POST'])
 def shopping_clear_checked():
-    ShoppingItem.query.filter_by(checked=True).delete()
+    # Uncheck all checked items (move back to main list)
+    ShoppingItem.query.filter_by(checked=True).update({'checked': False})
     db.session.commit()
     return redirect(url_for('shopping_list'))
 
