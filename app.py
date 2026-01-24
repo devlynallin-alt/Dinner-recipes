@@ -170,6 +170,67 @@ UNIT_CONVERSIONS = {
     'G': ('G', 1),
 }
 
+# Average weight per EA (in grams) for common ingredients
+# Used for cost calculation when recipe uses EA but price is per LB
+AVERAGE_WEIGHTS = {
+    # Produce - Vegetables
+    'TOMATO': 150,          # 1 medium tomato = 150g (0.33 lb)
+    'ONION': 225,           # 1 medium onion = 225g (0.5 lb)
+    'RED ONION': 225,
+    'YELLOW ONION': 225,
+    'WHITE ONION': 225,
+    'GREEN ONION': 30,      # 1 green onion = 30g
+    'SCALLION': 30,
+    'CARROT': 70,           # 1 medium carrot = 70g (0.15 lb)
+    'CELERY': 45,           # 1 stalk = 45g (0.1 lb)
+    'POTATO': 225,          # 1 medium potato = 225g (0.5 lb)
+    'RUSSET POTATO': 225,
+    'YELLOW POTATO': 170,
+    'RED POTATO': 170,
+    'SWEET POTATO': 200,
+    'BELL PEPPER': 150,     # 1 medium = 150g (0.33 lb)
+    'RED PEPPER': 150,
+    'YELLOW PEPPER': 150,
+    'GREEN PEPPER': 150,
+    'JALAPENO': 15,         # 1 jalapeno = 15g
+    'CUCUMBER': 300,        # 1 medium = 300g (0.66 lb)
+    'ZUCCHINI': 200,        # 1 medium = 200g
+    'MUSHROOM': 18,         # 1 medium = 18g
+    'GARLIC': 5,            # 1 clove = 5g
+    'GINGER': 30,           # 1 inch piece = 30g
+    'BROCCOLI': 600,        # 1 head = 600g (1.3 lb)
+    'CAULIFLOWER': 900,     # 1 head = 900g (2 lb)
+    'CABBAGE': 900,         # 1 head = 900g (2 lb)
+    'LETTUCE': 300,         # 1 head = 300g
+    'ROMAINE': 300,
+    'SPINACH': 30,          # 1 cup = 30g
+    'KALE': 30,
+    'AVOCADO': 200,         # 1 medium = 200g
+    'CORN': 200,            # 1 ear = 200g
+
+    # Produce - Fruits
+    'LEMON': 85,            # 1 lemon = 85g (0.19 lb)
+    'LIME': 65,             # 1 lime = 65g (0.14 lb)
+    'ORANGE': 180,          # 1 medium = 180g
+    'APPLE': 180,           # 1 medium = 180g
+    'BANANA': 120,          # 1 medium = 120g
+
+    # Proteins
+    'EGG': 50,              # 1 large egg = 50g
+    'CHICKEN BREAST': 225,  # 1 breast = 225g (0.5 lb)
+    'CHICKEN THIGH': 115,   # 1 thigh = 115g (0.25 lb)
+    'BACON': 30,            # 1 slice = 30g
+    'SAUSAGE': 100,         # 1 link = 100g
+
+    # Dairy
+    'BUTTER': 14,           # 1 tbsp = 14g
+
+    # Bakery
+    'BREAD': 30,            # 1 slice = 30g
+    'TORTILLA': 45,         # 1 tortilla = 45g
+    'BUN': 60,              # 1 bun = 60g
+}
+
 # Preferred units for specific ingredients (keyword -> preferred unit)
 # Liquids should be in ML, meats in G, oils in TBSP
 INGREDIENT_PREFERRED_UNITS = {
@@ -1068,9 +1129,40 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             packs_needed = max(1, -(-int(qty) // pack_size))
             leftover = (packs_needed * pack_size) - qty
 
-        # Calculate cost - item['cost'] is the per-unit cost
+        # Calculate cost - item['cost'] is the per-LB cost for most items
         unit_cost = item['cost']
-        total_cost = round(unit_cost * qty, 2)
+        cost_unit = 'LB'  # Most ingredients are priced per LB
+
+        # Calculate total cost based on unit
+        if unit in ('LB', 'KG', 'G'):
+            # Convert to LB for cost calculation
+            if unit == 'KG':
+                qty_in_lb = qty * 2.20462
+            elif unit == 'G':
+                qty_in_lb = qty / 453.592
+            else:
+                qty_in_lb = qty
+            total_cost = round(unit_cost * qty_in_lb, 2)
+        elif unit == 'EA':
+            # Check if we have average weight for this item
+            ing_upper = key[0]
+            avg_weight = None
+            for name_key, weight in AVERAGE_WEIGHTS.items():
+                if name_key in ing_upper:
+                    avg_weight = weight
+                    break
+            if avg_weight:
+                # Convert EA to LB using average weight
+                qty_in_lb = (qty * avg_weight) / 453.592
+                total_cost = round(unit_cost * qty_in_lb, 2)
+            else:
+                # No average weight, assume cost is per EA
+                total_cost = round(unit_cost * qty, 2)
+                cost_unit = 'EA'
+        else:
+            # For volume units (ML, CUP, etc.), assume cost is per unit
+            total_cost = round(unit_cost * qty, 2)
+            cost_unit = unit
 
         shopping_items.append({
             'name': item['name'],
@@ -1080,7 +1172,7 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             'category': item['category'],
             'pack_size': pack_size,
             'leftover': round(leftover, 2) if leftover > 0 else None,
-            'unit_cost': f"${unit_cost:.2f}/{unit}" if unit_cost > 0 else '',
+            'unit_cost': f"${unit_cost:.2f}/{cost_unit}" if unit_cost > 0 else '',
             'cost': total_cost,
             'is_use_up': item['is_use_up']
         })
