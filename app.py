@@ -85,12 +85,12 @@ def format_shopping_qty(item):
     # For ML, also show cups equivalent
     if unit == 'ML':
         cups = qty / 236.588
-        return f"{qty:.0f} ML ({cups:.2f} cups)"
+        return f"{qty:.0f} ML ({float_to_fraction(cups)} cups)"
 
     # For CUP, also show ML equivalent
     if unit == 'CUP':
         ml = qty * 236.588
-        return f"{qty:.2f} cups ({ml:.0f} ML)"
+        return f"{float_to_fraction(qty)} cups ({ml:.0f} ML)"
 
     return f"{qty} {unit}"
 
