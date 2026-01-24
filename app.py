@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
 from fractions import Fraction
+import math
 import random
 import os
 import re
@@ -1159,10 +1160,11 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 break
 
         # Handle canned/container items - cost is per CAN
+        # Must buy whole cans, round up (e.g., 1.5 cans = 2 cans)
         if size:
             cost_unit = 'CAN'
-            cost_qty = max(1, qty)  # Minimum 1 can
-            total_cost = round(unit_cost * cost_qty, 2)
+            cans_needed = max(1, math.ceil(qty))  # Round up, minimum 1 can
+            total_cost = round(unit_cost * cans_needed, 2)
         # Weight-based items - cost is per LB
         elif unit in ('LB', 'KG', 'G'):
             cost_unit = 'LB'
