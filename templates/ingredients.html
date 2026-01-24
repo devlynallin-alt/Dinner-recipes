@@ -12,18 +12,29 @@
 
 <!-- Search and Filter -->
 <div class="row mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <input type="text" id="searchInput" class="form-control" placeholder="Search ingredients...">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <select id="categoryFilter" class="form-select">
             <option value="">All Categories</option>
-            {% for cat in ['Meat', 'Produce', 'Dairy', 'Pantry', 'Frozen', 'Bakery', 'Spices', 'Condiments', 'Beverages', 'Other'] %}
+            {% for cat in categories %}
             <option value="{{ cat }}">{{ cat }}</option>
             {% endfor %}
         </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <select id="priceUnitFilter" class="form-select">
+            <option value="">All Price Units</option>
+            <option value="LB">LB (per pound)</option>
+            <option value="KG">KG (per kilogram)</option>
+            <option value="CAN">CAN/JAR</option>
+            <option value="EA">EA (each)</option>
+            <option value="PKG">PKG (package)</option>
+            <option value="L">L (per liter)</option>
+        </select>
+    </div>
+    <div class="col-md-3">
         <select id="usedFilter" class="form-select">
             <option value="">All Ingredients</option>
             <option value="used">Used in Recipes</option>
@@ -43,13 +54,14 @@
                 <th>Category</th>
                 <th>Pack Size</th>
                 <th>Unit</th>
+                <th>Price Unit</th>
                 <th>Cost</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for ing in ingredients %}
-            <tr data-id="{{ ing.id }}" data-name="{{ ing.name.lower() }}" data-category="{{ ing.category }}" data-used="{{ 'true' if ing.used_in_recipes else 'false' }}">
+            <tr data-id="{{ ing.id }}" data-name="{{ ing.name.lower() }}" data-category="{{ ing.category }}" data-price-unit="{{ ing.price_unit or 'EA' }}" data-used="{{ 'true' if ing.used_in_recipes else 'false' }}">
                 <td class="editable" data-field="name" data-type="text">
                     {{ ing.name }}
                     {% if not ing.used_in_recipes %}<small class="text-muted">(unused)</small>{% endif %}
@@ -59,6 +71,7 @@
                 </td>
                 <td class="editable" data-field="pack_size" data-type="number">{{ ing.pack_size }}</td>
                 <td class="editable" data-field="default_unit" data-type="unit">{{ ing.default_unit }}</td>
+                <td class="editable" data-field="price_unit" data-type="price_unit">{{ ing.price_unit or 'EA' }}</td>
                 <td class="editable" data-field="cost" data-type="money">${{ '%.2f'|format(ing.cost) }}</td>
                 <td>
                     {% if ing.id not in pantry_ids %}
@@ -81,7 +94,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" class="text-muted">No ingredients found</td>
+                <td colspan="7" class="text-muted">No ingredients found</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -105,7 +118,7 @@
                     <div class="mb-3">
                         <label class="form-label">Category</label>
                         <select name="category" class="form-select" required>
-                            {% for cat in ['Meat', 'Produce', 'Dairy', 'Pantry', 'Frozen', 'Bakery', 'Spices', 'Condiments', 'Beverages', 'Other'] %}
+                            {% for cat in categories %}
                             <option value="{{ cat }}">{{ cat }}</option>
                             {% endfor %}
                         </select>
@@ -131,6 +144,19 @@
                             <div class="mb-3">
                                 <label class="form-label">Cost ($)</label>
                                 <input type="number" name="cost" class="form-control" value="0" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Price Unit</label>
+                                <select name="price_unit" class="form-select" required>
+                                    {% for pu in ['EA', 'LB', 'KG', 'L', 'CAN', 'PKG'] %}
+                                    <option value="{{ pu }}">{{ pu }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">How this item is priced (per LB, per CAN, etc.)</small>
                             </div>
                         </div>
                     </div>
@@ -161,8 +187,9 @@
 }
 </style>
 <script>
-const categories = ['Meat', 'Produce', 'Dairy', 'Pantry', 'Frozen', 'Bakery', 'Spices', 'Condiments', 'Beverages', 'Other'];
+const categories = {{ categories | tojson }};
 const units = ['EA', 'CAN', 'LB', 'OZ', 'KG', 'G', 'ML', 'L', 'TSP', 'TBSP', 'CUP', 'CLOVE', 'HEAD'];
+const priceUnits = ['EA', 'LB', 'KG', 'L', 'CAN', 'PKG'];
 
 // Make cells editable on click
 document.querySelectorAll('.editable').forEach(cell => {
@@ -200,6 +227,16 @@ document.querySelectorAll('.editable').forEach(cell => {
                 if (unit === currentValue) opt.selected = true;
                 input.appendChild(opt);
             });
+        } else if (type === 'price_unit') {
+            input = document.createElement('select');
+            input.className = 'form-select form-select-sm';
+            priceUnits.forEach(pu => {
+                const opt = document.createElement('option');
+                opt.value = pu;
+                opt.textContent = pu;
+                if (pu === currentValue) opt.selected = true;
+                input.appendChild(opt);
+            });
         } else {
             input = document.createElement('input');
             input.className = 'form-control form-control-sm';
@@ -229,6 +266,8 @@ document.querySelectorAll('.editable').forEach(cell => {
             costVal = costVal.replace('$', '');
             formData.append('cost', costVal);
 
+            formData.append('price_unit', field === 'price_unit' ? newValue : row.querySelector('[data-field="price_unit"]').textContent.trim());
+
             fetch('/ingredient/' + id + '/edit', {
                 method: 'POST',
                 body: formData
@@ -240,6 +279,9 @@ document.querySelectorAll('.editable').forEach(cell => {
                     } else if (type === 'select') {
                         cell.innerHTML = '<span class="badge bg-secondary">' + newValue + '</span>';
                         row.dataset.category = newValue;
+                    } else if (type === 'price_unit') {
+                        cell.textContent = newValue;
+                        row.dataset.priceUnit = newValue;
                     } else {
                         cell.textContent = newValue;
                         if (field === 'name') row.dataset.name = newValue.toLowerCase();
@@ -271,6 +313,7 @@ document.querySelectorAll('.editable').forEach(cell => {
 function filterIngredients() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const category = document.getElementById('categoryFilter').value;
+    const priceUnit = document.getElementById('priceUnitFilter').value;
     const usedFilter = document.getElementById('usedFilter').value;
 
     document.querySelectorAll('#ingredientTable tbody tr').forEach(row => {
@@ -278,20 +321,23 @@ function filterIngredients() {
 
         const name = row.dataset.name;
         const rowCategory = row.dataset.category;
+        const rowPriceUnit = row.dataset.priceUnit;
         const isUsed = row.dataset.used === 'true';
 
         const matchesSearch = name.includes(search);
         const matchesCategory = !category || rowCategory === category;
+        const matchesPriceUnit = !priceUnit || rowPriceUnit === priceUnit;
         const matchesUsed = !usedFilter ||
             (usedFilter === 'used' && isUsed) ||
             (usedFilter === 'unused' && !isUsed);
 
-        row.style.display = (matchesSearch && matchesCategory && matchesUsed) ? '' : 'none';
+        row.style.display = (matchesSearch && matchesCategory && matchesPriceUnit && matchesUsed) ? '' : 'none';
     });
 }
 
 document.getElementById('searchInput').addEventListener('input', filterIngredients);
 document.getElementById('categoryFilter').addEventListener('change', filterIngredients);
+document.getElementById('priceUnitFilter').addEventListener('change', filterIngredients);
 document.getElementById('usedFilter').addEventListener('change', filterIngredients);
 </script>
 {% endblock %}

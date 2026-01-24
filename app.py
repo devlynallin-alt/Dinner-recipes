@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
-from fractions import Fraction
 import math
 import random
 import os
@@ -10,38 +9,11 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-# Common fractions for display
+# Common fractions for display (using precise values)
 COMMON_FRACTIONS = {
-    0.125: '1/8', 0.25: '1/4', 0.333: '1/3', 0.375: '3/8',
-    0.5: '1/2', 0.625: '5/8', 0.667: '2/3', 0.75: '3/4', 0.875: '7/8'
+    0.125: '1/8', 0.25: '1/4', 1/3: '1/3', 0.375: '3/8',
+    0.5: '1/2', 0.625: '5/8', 2/3: '2/3', 0.75: '3/4', 0.875: '7/8'
 }
-
-def parse_fraction(text):
-    """Parse fraction string like '2/3' or '1 1/2' to float"""
-    if not text:
-        return 0.0
-    text = str(text).strip()
-    # Already a number
-    try:
-        return float(text)
-    except ValueError:
-        pass
-    # Handle mixed fractions like "1 1/2"
-    parts = text.split()
-    total = 0.0
-    for part in parts:
-        if '/' in part:
-            try:
-                num, denom = part.split('/')
-                total += float(num) / float(denom)
-            except (ValueError, ZeroDivisionError):
-                pass
-        else:
-            try:
-                total += float(part)
-            except ValueError:
-                pass
-    return total if total > 0 else 0.0
 
 def float_to_fraction(value):
     """Convert float to fraction string for display"""
@@ -105,7 +77,7 @@ def format_shopping_qty(item):
     return f"{qty} {unit}"
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'dinner-recipes-secret-key'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-only-change-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recipes.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
@@ -122,15 +94,41 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Keywords indicating notes to remove from ingredient text
-NOTE_KEYWORDS = [
+
+def safe_float(value, default=0.0, min_val=None, max_val=None):
+    """Safely parse a float value with optional bounds."""
+    try:
+        result = float(value) if value else default
+        if min_val is not None:
+            result = max(min_val, result)
+        if max_val is not None:
+            result = min(max_val, result)
+        return result
+    except (ValueError, TypeError):
+        return default
+
+
+def safe_int(value, default=1, min_val=None, max_val=None):
+    """Safely parse an integer value with optional bounds."""
+    try:
+        result = int(value) if value else default
+        if min_val is not None:
+            result = max(min_val, result)
+        if max_val is not None:
+            result = min(max_val, result)
+        return result
+    except (ValueError, TypeError):
+        return default
+
+# Keywords indicating notes to remove from ingredient text (set for O(1) lookup)
+NOTE_KEYWORDS = {
     'optional', 'divided', 'or more', 'or less', 'to taste',
     'for serving', 'for garnish', 'at room temp', 'softened',
     'melted', 'chopped', 'diced', 'minced', 'sliced', 'cubed',
     'sifted', 'packed', 'beaten', 'room temperature', 'thawed',
     'drained', 'rinsed', 'peeled', 'seeded', 'cored', 'trimmed',
     'cut into', 'plus more', 'as needed', 'torn', 'shredded'
-]
+}
 
 # Unit mappings for ingredient parsing
 UNIT_MAPPINGS = {
@@ -352,7 +350,6 @@ INGREDIENT_ALIASES = {
     'yellow onion': 'Onion',
     'white onion': 'Onion',
     'red onion': 'Red Onion',
-    'garlic clove': 'Garlic',
     'clove garlic': 'Garlic',
     'all purpose flour': 'Flour',
     'all-purpose flour': 'Flour',
@@ -421,11 +418,11 @@ def normalize_ingredient_name(name):
     # Remove leading numbers and fractions that might be left over
     normalized = re.sub(r'^[\d\s/.-]+', '', normalized).strip()
 
-    # Remove common descriptors
-    remove_words = ['fresh', 'dried', 'chopped', 'diced', 'sliced', 'minced',
+    # Remove common descriptors (set for O(1) lookup)
+    remove_words = {'fresh', 'dried', 'chopped', 'diced', 'sliced', 'minced',
                     'large', 'small', 'medium', 'whole', 'raw', 'cooked',
                     'boneless', 'skinless', 'organic', 'frozen', 'canned',
-                    'a', 'an', 'the', 'of']
+                    'a', 'an', 'the', 'of'}
     words = normalized.split()
     words = [w for w in words if w not in remove_words]
     normalized = ' '.join(words)
@@ -458,20 +455,21 @@ def normalize_ingredient_name(name):
     words = normalized.split()
     words = [singular_map.get(w, w) for w in words]
 
-    # Also handle generic -s plural if not in map
-    words = [w[:-1] if w.endswith('s') and len(w) > 3 and w not in ['cheese', 'rice', 'grass', 'molasses', 'hummus'] else w for w in words]
+    # Handle generic -s plural if not in map (preserve words that end in 's' naturally)
+    no_strip_s = {'cheese', 'rice', 'grass', 'molasses', 'hummus'}
+    singularized = []
+    for w in words:
+        if w.endswith('s') and len(w) > 3 and w not in no_strip_s:
+            singularized.append(w[:-1])
+        else:
+            singularized.append(w)
+    words = singularized
 
     normalized = ' '.join(words)
 
-    # Check exact aliases first
+    # Check exact aliases
     if normalized in INGREDIENT_ALIASES:
         return INGREDIENT_ALIASES[normalized]
-
-    # Try partial alias matches (only if alias is contained in normalized, not the other way)
-    # Sort by longest alias first to match more specific aliases first
-    for alias, canonical in sorted(INGREDIENT_ALIASES.items(), key=lambda x: -len(x[0])):
-        if alias == normalized:
-            return canonical
 
     # Capitalize each word for display
     return ' '.join(word.capitalize() for word in normalized.split())
@@ -541,12 +539,11 @@ def parse_fraction(s):
     # Otherwise it's a whole number or decimal
     try:
         return float(s)
-    except:
+    except (ValueError, TypeError):
         return 1.0
 
 def parse_ingredient(text):
     """Parse ingredient text like '2 cups flour' into (quantity, unit, name)"""
-    original = text
     text = text.strip()
     if not text:
         return None, None, None
@@ -622,6 +619,7 @@ class Ingredient(db.Model):
     default_unit = db.Column(db.String(20), default='EA')
     cost = db.Column(db.Float, default=0.0)
     pack_size = db.Column(db.Integer, default=1)
+    price_unit = db.Column(db.String(20), default='EA')  # CAN, EA, LB, KG, L, PKG
 
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -711,12 +709,17 @@ def recipe_view(id):
 @app.route('/recipe/add', methods=['GET', 'POST'])
 def recipe_add():
     if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Recipe name is required', 'danger')
+            return render_template('recipe_form.html', recipe=None)
+
         recipe = Recipe(
-            name=request.form['name'],
-            category=request.form['category'],
-            difficulty=request.form['difficulty'],
-            protein_type=request.form['protein_type'],
-            servings=int(request.form['servings']),
+            name=name,
+            category=request.form.get('category', 'Dinner'),
+            difficulty=request.form.get('difficulty', 'Easy'),
+            protein_type=request.form.get('protein_type', 'None'),
+            servings=safe_int(request.form.get('servings'), default=4, min_val=1, max_val=100),
             instructions=request.form.get('instructions', '')
         )
         db.session.add(recipe)
@@ -734,11 +737,16 @@ def recipe_edit(id):
     ingredients = Ingredient.query.order_by(Ingredient.category, Ingredient.name).all()
 
     if request.method == 'POST':
-        recipe.name = request.form['name']
-        recipe.category = request.form['category']
-        recipe.difficulty = request.form['difficulty']
-        recipe.protein_type = request.form['protein_type']
-        recipe.servings = int(request.form['servings'])
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Recipe name is required', 'danger')
+            return render_template('recipe_form.html', recipe=recipe, ingredients=ingredients)
+
+        recipe.name = name
+        recipe.category = request.form.get('category', 'Dinner')
+        recipe.difficulty = request.form.get('difficulty', 'Easy')
+        recipe.protein_type = request.form.get('protein_type', 'None')
+        recipe.servings = safe_int(request.form.get('servings'), default=4, min_val=1, max_val=100)
         recipe.instructions = request.form.get('instructions', '')
         db.session.commit()
         flash(f'Recipe "{recipe.name}" updated!', 'success')
@@ -758,10 +766,20 @@ def recipe_delete(id):
 @app.route('/recipe/<int:id>/ingredient/add', methods=['POST'])
 def recipe_ingredient_add(id):
     recipe = Recipe.query.get_or_404(id)
-    ingredient_id = int(request.form['ingredient_id'])
-    quantity = parse_fraction(request.form['quantity'])
-    size = float(request.form['size']) if request.form.get('size') else None
-    unit = request.form['unit']
+
+    try:
+        ingredient_id = int(request.form['ingredient_id'])
+    except (ValueError, TypeError):
+        flash('Invalid ingredient selected', 'danger')
+        return redirect(url_for('recipe_edit', id=id))
+
+    quantity = parse_fraction(request.form.get('quantity', '1'))
+    quantity = max(0.001, min(9999, quantity))  # Clamp to reasonable range
+
+    size_str = request.form.get('size', '').strip()
+    size = safe_float(size_str, default=None, min_val=0.1, max_val=9999) if size_str else None
+
+    unit = request.form.get('unit', 'EA')
 
     ri = RecipeIngredient(recipe_id=id, ingredient_id=ingredient_id, quantity=quantity, size=size, unit=unit)
     db.session.add(ri)
@@ -772,9 +790,19 @@ def recipe_ingredient_add(id):
 @app.route('/recipe/<int:recipe_id>/ingredient/<int:ri_id>/update', methods=['POST'])
 def recipe_ingredient_update(recipe_id, ri_id):
     ri = RecipeIngredient.query.get_or_404(ri_id)
-    ri.ingredient_id = int(request.form.get('ingredient_id', ri.ingredient_id))
-    ri.quantity = parse_fraction(request.form.get('quantity', ri.quantity))
-    ri.size = float(request.form['size']) if request.form.get('size') else None
+
+    try:
+        ri.ingredient_id = int(request.form.get('ingredient_id', ri.ingredient_id))
+    except (ValueError, TypeError):
+        pass  # Keep existing ingredient_id
+
+    quantity_str = request.form.get('quantity')
+    if quantity_str:
+        ri.quantity = max(0.001, min(9999, parse_fraction(quantity_str)))
+
+    size_str = request.form.get('size', '').strip()
+    ri.size = safe_float(size_str, default=None, min_val=0.1, max_val=9999) if size_str else None
+
     ri.unit = request.form.get('unit', ri.unit)
     db.session.commit()
     return redirect(url_for('recipe_edit', id=recipe_id))
@@ -854,7 +882,7 @@ def recipe_import():
                                 break
                     if recipe_data:
                         break
-                except:
+                except (json.JSONDecodeError, TypeError, AttributeError):
                     continue
 
             if recipe_data:
@@ -982,7 +1010,7 @@ def recipe_import_save():
             with open(filepath, 'wb') as f:
                 f.write(img_response.content)
             recipe.image = filename
-        except:
+        except (requests.RequestException, IOError, OSError):
             pass  # Image download failed, continue without it
 
     # Parse and add ingredients
@@ -1040,6 +1068,117 @@ def recipe_import_save():
 # ROUTES - SHOPPING LIST
 # ============================================
 
+def _apply_special_conversions(ing_name_upper, unit, qty):
+    """Apply special ingredient-specific unit conversions."""
+    # Convert garlic heads to cloves (1 head = 9 cloves)
+    if 'GARLIC' in ing_name_upper and unit == 'HEAD':
+        return 'CLOVE', qty * 9
+
+    # Convert chicken thighs EA to weight (~75.6g per thigh)
+    if 'CHICKEN' in ing_name_upper and 'THIGH' in ing_name_upper and unit == 'EA':
+        return 'G', qty * 75.6
+
+    # Convert cheese from cups to weight (1 cup shredded = 113.4g)
+    if 'CHEESE' in ing_name_upper and unit in ('CUP', 'CUPS'):
+        return 'G', qty * 113.4
+
+    return unit, qty
+
+
+def _convert_to_friendly_units(qty, unit, ing_name_upper):
+    """Convert base units to user-friendly display units."""
+    # Volume: ML -> L if large, or -> CUP for medium amounts
+    if unit == 'ML':
+        if qty >= 1000:
+            return qty / 1000, 'L'
+        elif qty >= 237:  # About 1 cup
+            return qty / 236.588, 'CUP'
+    # Weight: G -> KG if large, or -> LB for medium amounts
+    elif unit == 'G':
+        # Cheese always converts to LB (we buy by the pound)
+        if 'CHEESE' in ing_name_upper:
+            return qty / 453.592, 'LB'
+        elif qty >= 1000:
+            return qty / 1000, 'KG'
+        elif qty >= 454:  # About 1 lb
+            return qty / 453.592, 'LB'
+    return qty, unit
+
+
+def _get_minimum_purchase(ing_upper):
+    """Get minimum purchase quantity for an ingredient if applicable."""
+    for min_key, (min_val, min_unit) in MINIMUM_PURCHASE.items():
+        if min_key in ing_upper:
+            return (min_val, min_unit)
+    return None
+
+
+def _calculate_item_cost(qty, unit, unit_cost, price_unit, ing_upper, pack_size, has_size, min_qty_for_cost):
+    """Calculate total cost for a shopping list item. Returns (total_cost, cost_unit)."""
+    # Handle canned/container items - cost is per CAN
+    if has_size or price_unit == 'CAN':
+        cans_needed = max(1, math.ceil(qty))
+        return round(unit_cost * cans_needed, 2), 'CAN'
+
+    # Price unit is LB - calculate based on weight
+    if price_unit == 'LB':
+        if unit == 'KG':
+            qty_in_lb = qty * 2.20462
+        elif unit == 'G':
+            qty_in_lb = qty / 453.592
+        elif unit == 'LB':
+            qty_in_lb = qty
+        elif unit == 'EA':
+            # Convert EA to LB using average weight
+            avg_weight = next((w for k, w in AVERAGE_WEIGHTS.items() if k in ing_upper), None)
+            qty_in_lb = (qty * avg_weight) / 453.592 if avg_weight else qty
+        else:
+            qty_in_lb = qty
+        if min_qty_for_cost and min_qty_for_cost[1] == 'LB':
+            qty_in_lb = max(min_qty_for_cost[0], qty_in_lb)
+        return round(unit_cost * qty_in_lb, 2), 'LB'
+
+    # Price unit is KG
+    if price_unit == 'KG':
+        if unit == 'KG':
+            qty_in_kg = qty
+        elif unit == 'G':
+            qty_in_kg = qty / 1000
+        elif unit == 'LB':
+            qty_in_kg = qty * 0.453592
+        else:
+            qty_in_kg = qty
+        return round(unit_cost * qty_in_kg, 2), 'KG'
+
+    # Price unit is L (liter)
+    if price_unit == 'L':
+        if unit == 'ML':
+            qty_in_l = qty / 1000
+        elif unit == 'CUP':
+            qty_in_l = (qty * 236.588) / 1000
+        elif unit == 'L':
+            qty_in_l = qty
+        elif unit in ('TSP', 'TBSP'):
+            qty_in_l = qty * 0.001
+        else:
+            qty_in_l = qty
+        if min_qty_for_cost and min_qty_for_cost[1] == 'L':
+            qty_in_l = max(min_qty_for_cost[0], qty_in_l)
+        return round(unit_cost * qty_in_l, 2), 'L'
+
+    # Price unit is PKG (package)
+    if price_unit == 'PKG':
+        pkgs_needed = max(1, math.ceil(qty / pack_size) if pack_size > 1 else math.ceil(qty))
+        return round(unit_cost * pkgs_needed, 2), 'PKG'
+
+    # Default: Price unit is EA
+    if min_qty_for_cost and min_qty_for_cost[1] == 'EA':
+        cost_qty = max(min_qty_for_cost[0], qty)
+    else:
+        cost_qty = max(1, qty)
+    return round(unit_cost * cost_qty, 2), 'EA'
+
+
 def generate_shopping_list(recipe_ids, multipliers=None):
     """
     Generate a shopping list from recipe IDs.
@@ -1048,16 +1187,15 @@ def generate_shopping_list(recipe_ids, multipliers=None):
     if multipliers is None:
         multipliers = {}
 
-    # Get pantry staples to exclude (filter out any with deleted ingredients)
+    # Get pantry staples to exclude
     pantry_staples = {ps.ingredient.name.upper() for ps in PantryStaple.query.filter_by(have_it=True).all() if ps.ingredient}
-    pantry_staples.add('WATER')  # Always exclude water
+    pantry_staples.add('WATER')
 
     # Get USE UP items for highlighting
     use_up_names = {item.ingredient.name.upper() for item in UseUpItem.query.all() if item.ingredient}
 
-    # Consolidate ingredients
+    # Consolidate ingredients from all recipes
     consolidated = {}
-
     for recipe_id in recipe_ids:
         recipe = Recipe.query.get(int(recipe_id))
         if not recipe:
@@ -1070,28 +1208,14 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             if ing_name_upper in pantry_staples:
                 continue
 
-            # Use size in key if present (for containers like cans)
             size_key = ri.size if ri.size else None
             unit = ri.unit.upper()
             qty = ri.quantity * multiplier
 
-            # Convert garlic heads to cloves (1 head = 9 cloves)
-            if 'GARLIC' in ing_name_upper and unit == 'HEAD':
-                qty = qty * 9
-                unit = 'CLOVE'
+            # Apply special conversions (garlic heads, chicken thighs, cheese cups)
+            unit, qty = _apply_special_conversions(ing_name_upper, unit, qty)
 
-            # Convert chicken thighs EA to weight (6 thighs = 1 lb = 453.592g)
-            if 'CHICKEN' in ing_name_upper and 'THIGH' in ing_name_upper and unit == 'EA':
-                qty = qty * 75.6  # ~75.6g per thigh
-                unit = 'G'
-
-            # Convert cheese from cups to weight (1 LB = 4 cups shredded)
-            # 1 cup shredded cheese = 0.25 LB = 113.4g
-            if 'CHEESE' in ing_name_upper and unit in ('CUP', 'CUPS'):
-                qty = qty * 113.4  # Convert cups to grams
-                unit = 'G'
-
-            # Normalize to base units for consolidation (ML for volume, G for weight)
+            # Normalize to base units for consolidation
             if unit in UNIT_CONVERSIONS:
                 base_unit, factor = UNIT_CONVERSIONS[unit]
                 qty = qty * factor
@@ -1110,34 +1234,21 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                     'category': ri.ingredient.category,
                     'pack_size': ri.ingredient.pack_size,
                     'cost': ri.ingredient.cost,
+                    'price_unit': ri.ingredient.price_unit or 'EA',
                     'is_use_up': ing_name_upper in use_up_names
                 }
 
-    # Convert units and build shopping items
+    # Build shopping items with friendly units and costs
     shopping_items = []
     for key, item in consolidated.items():
+        ing_name_upper = key[0]
         qty = item['qty']
         unit = item['unit']
         size = item.get('size')
 
-        # For non-container items, auto-convert to user-friendly units
+        # Convert to user-friendly units for non-container items
         if not size:
-            # Volume: ML -> L if large, or -> CUP for medium amounts
-            if unit == 'ML':
-                if qty >= 1000:
-                    qty, unit = qty / 1000, 'L'
-                elif qty >= 237:  # About 1 cup
-                    qty, unit = qty / 236.588, 'CUP'
-            # Weight: G -> KG if large, or -> LB for medium amounts
-            elif unit == 'G':
-                ing_name_upper = key[0]
-                # Cheese always converts to LB (we buy by the pound)
-                if 'CHEESE' in ing_name_upper:
-                    qty, unit = qty / 453.592, 'LB'
-                elif qty >= 1000:
-                    qty, unit = qty / 1000, 'KG'
-                elif qty >= 454:  # About 1 lb
-                    qty, unit = qty / 453.592, 'LB'
+            qty, unit = _convert_to_friendly_units(qty, unit, ing_name_upper)
 
         qty = round(qty, 2)
 
@@ -1148,84 +1259,14 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             packs_needed = max(1, -(-int(qty) // pack_size))
             leftover = (packs_needed * pack_size) - qty
 
-        # Calculate cost - item['cost'] is the per-unit cost
+        # Calculate cost
         unit_cost = item['cost']
-        ing_upper = key[0]
-
-        # Check for minimum purchase quantity
-        min_qty_for_cost = None
-        for min_key, (min_val, min_unit) in MINIMUM_PURCHASE.items():
-            if min_key in ing_upper:
-                min_qty_for_cost = (min_val, min_unit)
-                break
-
-        # Handle canned/container items - cost is per CAN
-        # Must buy whole cans, round up (e.g., 1.5 cans = 2 cans)
-        if size:
-            cost_unit = 'CAN'
-            cans_needed = max(1, math.ceil(qty))  # Round up, minimum 1 can
-            total_cost = round(unit_cost * cans_needed, 2)
-        # Weight-based items - cost is per LB
-        elif unit in ('LB', 'KG', 'G'):
-            cost_unit = 'LB'
-            if unit == 'KG':
-                qty_in_lb = qty * 2.20462
-            elif unit == 'G':
-                qty_in_lb = qty / 453.592
-            else:
-                qty_in_lb = qty
-            # Apply minimum (e.g., 1 LB for beef)
-            if min_qty_for_cost and min_qty_for_cost[1] == 'LB':
-                qty_in_lb = max(min_qty_for_cost[0], qty_in_lb)
-            total_cost = round(unit_cost * qty_in_lb, 2)
-        elif unit == 'EA':
-            # Check if this item is priced per EA (not per LB)
-            is_per_ea = any(ea_item in ing_upper for ea_item in COST_PER_EA)
-            if is_per_ea:
-                # Cost is per EA - apply minimum
-                cost_unit = 'EA'
-                if min_qty_for_cost and min_qty_for_cost[1] == 'EA':
-                    cost_qty = max(min_qty_for_cost[0], qty)
-                else:
-                    cost_qty = max(1, qty)  # Minimum 1 EA
-                total_cost = round(unit_cost * cost_qty, 2)
-            else:
-                # Check if we have average weight for this item
-                avg_weight = None
-                for name_key, weight in AVERAGE_WEIGHTS.items():
-                    if name_key in ing_upper:
-                        avg_weight = weight
-                        break
-                if avg_weight:
-                    # Convert EA to LB using average weight
-                    cost_unit = 'LB'
-                    qty_in_lb = (qty * avg_weight) / 453.592
-                    # Apply minimum (e.g., 1 LB for beef)
-                    if min_qty_for_cost and min_qty_for_cost[1] == 'LB':
-                        qty_in_lb = max(min_qty_for_cost[0], qty_in_lb)
-                    total_cost = round(unit_cost * qty_in_lb, 2)
-                else:
-                    # No average weight, assume cost is per EA
-                    cost_unit = 'EA'
-                    cost_qty = max(1, qty)  # Minimum 1 EA
-                    total_cost = round(unit_cost * cost_qty, 2)
-        else:
-            # For volume units - cost is per L (liter)
-            cost_unit = 'L'
-            if unit == 'ML':
-                qty_in_l = qty / 1000
-            elif unit == 'CUP':
-                qty_in_l = (qty * 236.588) / 1000
-            elif unit == 'L':
-                qty_in_l = qty
-            else:
-                # TSP, TBSP - convert to L
-                qty_in_l = qty / 1000 if unit in ('TSP', 'TBSP') else qty
-                cost_unit = unit
-            # Apply minimum (e.g., 1 L for broth)
-            if min_qty_for_cost and min_qty_for_cost[1] == 'L':
-                qty_in_l = max(min_qty_for_cost[0], qty_in_l)
-            total_cost = round(unit_cost * qty_in_l, 2)
+        price_unit = item.get('price_unit', 'EA')
+        min_qty_for_cost = _get_minimum_purchase(ing_name_upper)
+        total_cost, cost_unit = _calculate_item_cost(
+            qty, unit, unit_cost, price_unit, ing_name_upper,
+            pack_size, bool(size), min_qty_for_cost
+        )
 
         shopping_items.append({
             'name': item['name'],
@@ -1256,7 +1297,9 @@ def shopping_list():
     pantry_names = set(
         ps.ingredient.name.lower() for ps in PantryStaple.query.options(joinedload(PantryStaple.ingredient)).all()
     )
-    return render_template('shopping.html', items=items, pantry_names=pantry_names)
+    # Get categories from ingredients
+    categories = sorted(set(ing.category for ing in Ingredient.query.with_entities(Ingredient.category).distinct() if ing.category))
+    return render_template('shopping.html', items=items, pantry_names=pantry_names, categories=categories)
 
 @app.route('/shopping/add', methods=['POST'])
 def shopping_add():
@@ -1456,20 +1499,29 @@ def ingredients_list():
         ps.ingredient_id for ps in PantryStaple.query.with_entities(PantryStaple.ingredient_id).all()
     )
 
+    # Get all unique categories from database only
+    categories = sorted(set(ing.category for ing in ingredients if ing.category))
+
     # Add 'used_in_recipes' flag to each ingredient
     for ing in ingredients:
         ing.used_in_recipes = ing.id in used_ingredient_ids
 
-    return render_template('ingredients.html', ingredients=ingredients, pantry_ids=pantry_ids)
+    return render_template('ingredients.html', ingredients=ingredients, pantry_ids=pantry_ids, categories=categories)
 
 @app.route('/ingredient/add', methods=['POST'])
 def ingredient_add():
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Ingredient name is required', 'danger')
+        return redirect(url_for('ingredients_list'))
+
     ingredient = Ingredient(
-        name=request.form['name'],
-        category=request.form['category'],
-        default_unit=request.form['default_unit'],
-        cost=float(request.form['cost']) if request.form['cost'] else 0.0,
-        pack_size=int(request.form['pack_size']) if request.form['pack_size'] else 1
+        name=name,
+        category=request.form.get('category', 'Other'),
+        default_unit=request.form.get('default_unit', 'EA'),
+        cost=safe_float(request.form.get('cost'), default=0.0, min_val=0.0, max_val=9999.99),
+        pack_size=safe_int(request.form.get('pack_size'), default=1, min_val=1, max_val=9999),
+        price_unit=request.form.get('price_unit', 'EA')
     )
     db.session.add(ingredient)
     db.session.commit()
@@ -1479,11 +1531,18 @@ def ingredient_add():
 @app.route('/ingredient/<int:id>/edit', methods=['POST'])
 def ingredient_edit(id):
     ingredient = Ingredient.query.get_or_404(id)
-    ingredient.name = request.form['name']
-    ingredient.category = request.form['category']
-    ingredient.default_unit = request.form['default_unit']
-    ingredient.cost = float(request.form['cost']) if request.form['cost'] else 0.0
-    ingredient.pack_size = int(request.form['pack_size']) if request.form['pack_size'] else 1
+
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Ingredient name is required', 'danger')
+        return redirect(url_for('ingredients_list'))
+
+    ingredient.name = name
+    ingredient.category = request.form.get('category', 'Other')
+    ingredient.default_unit = request.form.get('default_unit', 'EA')
+    ingredient.cost = safe_float(request.form.get('cost'), default=0.0, min_val=0.0, max_val=9999.99)
+    ingredient.pack_size = safe_int(request.form.get('pack_size'), default=1, min_val=1, max_val=9999)
+    ingredient.price_unit = request.form.get('price_unit', 'EA')
     db.session.commit()
     flash(f'Ingredient "{ingredient.name}" updated!', 'success')
     return redirect(url_for('ingredients_list'))
@@ -1521,7 +1580,6 @@ def what_can_make():
             'ingredient_names': [ri.ingredient.name for ri in r.ingredients]
         })
 
-    import json
     return render_template('whatcanmake.html',
                          ingredients=ingredients,
                          pantry_ids=pantry_ids,
@@ -1618,23 +1676,6 @@ def pantry_add_common():
     else:
         flash('Common staples already in pantry or ingredients not found.', 'info')
     return redirect(url_for('pantry_list'))
-
-# ============================================
-# HELPER FUNCTIONS
-# ============================================
-
-def get_setting(key, default=''):
-    setting = Settings.query.filter_by(key=key).first()
-    return setting.value if setting else default
-
-def set_setting(key, value):
-    setting = Settings.query.filter_by(key=key).first()
-    if setting:
-        setting.value = value
-    else:
-        setting = Settings(key=key, value=value)
-        db.session.add(setting)
-    db.session.commit()
 
 # ============================================
 # INITIALIZE DATABASE

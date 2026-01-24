@@ -32,14 +32,9 @@
             </div>
             <div class="col-md-3">
                 <select name="category" class="form-select">
-                    <option value="Produce">Produce</option>
-                    <option value="Meat">Meat</option>
-                    <option value="Dairy">Dairy</option>
-                    <option value="Bakery">Bakery</option>
-                    <option value="Frozen">Frozen</option>
-                    <option value="Pantry">Pantry</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Other" selected>Other</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {{ 'selected' if cat == 'Other' else '' }}>{{ cat }}</option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
