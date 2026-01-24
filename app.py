@@ -1164,9 +1164,19 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 cost_unit = 'EA'
                 total_cost = round(unit_cost * qty, 2)
         else:
-            # For volume units (ML, CUP, etc.), assume cost is per unit
-            cost_unit = unit
-            total_cost = round(unit_cost * qty, 2)
+            # For volume units - cost is per L (liter)
+            cost_unit = 'L'
+            if unit == 'ML':
+                qty_in_l = qty / 1000
+            elif unit == 'CUP':
+                qty_in_l = (qty * 236.588) / 1000
+            elif unit == 'L':
+                qty_in_l = qty
+            else:
+                # TSP, TBSP - convert to L
+                qty_in_l = qty / 1000 if unit in ('TSP', 'TBSP') else qty
+                cost_unit = unit
+            total_cost = round(unit_cost * qty_in_l, 2)
 
         shopping_items.append({
             'name': item['name'],
