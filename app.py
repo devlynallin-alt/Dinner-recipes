@@ -595,7 +595,8 @@ class ShoppingItem(db.Model):
     quantity = db.Column(db.String(50), default='')
     checked = db.Column(db.Boolean, default=False)
     category = db.Column(db.String(50), default='Other')
-    cost = db.Column(db.Float, default=0.0)
+    unit_cost = db.Column(db.String(20), default='')  # e.g., "$3.99/LB"
+    cost = db.Column(db.Float, default=0.0)  # calculated total cost
 
 # ============================================
 # ROUTES - HOME
@@ -1067,6 +1068,10 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             packs_needed = max(1, -(-int(qty) // pack_size))
             leftover = (packs_needed * pack_size) - qty
 
+        # Calculate cost - item['cost'] is the per-unit cost
+        unit_cost = item['cost']
+        total_cost = round(unit_cost * qty, 2)
+
         shopping_items.append({
             'name': item['name'],
             'qty': qty,
@@ -1075,7 +1080,8 @@ def generate_shopping_list(recipe_ids, multipliers=None):
             'category': item['category'],
             'pack_size': pack_size,
             'leftover': round(leftover, 2) if leftover > 0 else None,
-            'cost': round(item['cost'] * qty, 2),
+            'unit_cost': f"${unit_cost:.2f}/{unit}" if unit_cost > 0 else '',
+            'cost': total_cost,
             'is_use_up': item['is_use_up']
         })
 
@@ -1144,6 +1150,7 @@ def shopping_add_from_recipes():
                 name=item['name'],
                 quantity=qty_str,
                 category=item['category'],
+                unit_cost=item.get('unit_cost', ''),
                 cost=item['cost']
             )
             db.session.add(shopping_item)
@@ -1268,6 +1275,7 @@ def shopping_from_mealplan():
             name=item['name'],
             quantity=qty_str,
             category=item['category'],
+            unit_cost=item.get('unit_cost', ''),
             cost=item['cost']
         )
         db.session.add(shopping_item)

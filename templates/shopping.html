@@ -63,7 +63,7 @@
                 {% if item.category != current_category.value and not item.checked %}
                     {% set current_category.value = item.category %}
                     <tr class="table-secondary">
-                        <td colspan="7"><strong>{{ item.category }}</strong></td>
+                        <td colspan="8"><strong>{{ item.category }}</strong></td>
                     </tr>
                 {% endif %}
                 {% if not item.checked %}
@@ -79,6 +79,7 @@
                     <td>{{ item.name }}</td>
                     <td class="text-muted" style="width: 100px;">{{ qty_parts[0] }}</td>
                     <td class="text-muted" style="width: 100px;">{{ qty_parts[1] if qty_parts|length > 1 else '' }}</td>
+                    <td class="text-muted text-end" style="width: 90px;">{{ item.unit_cost }}</td>
                     <td class="text-end" style="width: 80px;">{% if item.cost %}${{ '%.2f'|format(item.cost) }}{% endif %}</td>
                     <td style="width: 100px;">
                         {% if item.name.lower() not in pantry_names %}
@@ -102,7 +103,7 @@
                 {% endif %}
             {% else %}
                 <tr>
-                    <td colspan="7" class="text-muted text-center py-4">
+                    <td colspan="8" class="text-muted text-center py-4">
                         <i class="bi bi-cart"></i> Your shopping list is empty
                     </td>
                 </tr>
@@ -151,6 +152,7 @@
                 <td>{{ item.name }}</td>
                 <td>{{ qty_parts[0] }}</td>
                 <td>{{ qty_parts[1] if qty_parts|length > 1 else '' }}</td>
+                <td class="text-end">{{ item.unit_cost }}</td>
                 <td class="text-end">{% if item.cost %}${{ '%.2f'|format(item.cost) }}{% endif %}</td>
                 <td style="width: 50px;">
                     <form method="post" action="{{ url_for('shopping_delete', id=item.id) }}">
