@@ -64,7 +64,7 @@ def float_to_fraction(value):
     return f"{value:.2f}".rstrip('0').rstrip('.')
 
 def format_shopping_qty(item):
-    """Format quantity string for shopping list, with LB/KG conversion"""
+    """Format quantity string for shopping list, with unit conversions"""
     qty = item['qty']
     unit = item['unit']
     size = item.get('size')
@@ -81,6 +81,16 @@ def format_shopping_qty(item):
     if unit == 'KG':
         lb = qty / 0.453592
         return f"{qty:.2f} KG ({lb:.2f} LB)"
+
+    # For ML, also show cups equivalent
+    if unit == 'ML':
+        cups = qty / 236.588
+        return f"{qty:.0f} ML ({cups:.2f} cups)"
+
+    # For CUP, also show ML equivalent
+    if unit == 'CUP':
+        ml = qty * 236.588
+        return f"{qty:.2f} cups ({ml:.0f} ML)"
 
     return f"{qty} {unit}"
 
