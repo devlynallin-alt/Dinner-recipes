@@ -113,7 +113,7 @@ The app uses 5 formula types to calculate ingredient costs:
 | `PACKAGE` | `pkg_count` | Eggs: 3 eggs ÷ 12/carton = 0.25 cartons × $4.20 |
 | `COUNT` | - | Lemons: 2 × $0.99/EA |
 
-**Key function**: `convert_to_base_unit()` at line 490 handles all conversions.
+**Key function**: `convert_to_base_unit()` at line 490 handles all unit conversions.
 
 ---
 
@@ -142,79 +142,96 @@ The app uses 5 formula types to calculate ingredient costs:
 | `generate_shopping_list()` | 1577 | Aggregates ingredients, applies minimums |
 | `format_shopping_qty(item)` | 48 | Formats quantity with unit conversions |
 
+### Database
+| Function | Line | Purpose |
+|----------|------|---------|
+| `init_db()` | 2446 | Initialize database tables and run migrations |
+
 ### Utilities
 | Function | Line | Purpose |
 |----------|------|---------|
+| `float_to_fraction()` | 27 | Converts 0.5 → "1/2" for display |
+| `format_shopping_qty()` | 48 | Formats quantity with unit conversions |
+| `allowed_file()` | 114 | Validates image file extensions |
 | `safe_float()` | 118 | Safe float parsing with bounds |
 | `safe_int()` | 131 | Safe int parsing with bounds |
-| `float_to_fraction()` | 27 | Converts 0.5 → "1/2" for display |
-| `allowed_file()` | 114 | Validates image file extensions |
 
 ---
 
 ## Routes
 
-### Recipes (lines 1049-1571)
-| Route | Method | Function | Purpose |
-|-------|--------|----------|---------|
-| `/` | GET | `index()` | Home page with recipe list |
-| `/recipes` | GET | `recipes_list()` | Recipe list with category filter |
-| `/recipe/<id>` | GET | `recipe_view()` | Recipe detail with cost breakdown |
-| `/recipe/add` | GET/POST | `recipe_add()` | Create new recipe |
-| `/recipe/<id>/edit` | GET/POST | `recipe_edit()` | Edit recipe |
-| `/recipe/<id>/delete` | POST | `recipe_delete()` | Delete recipe |
-| `/recipe/<id>/upload-image` | POST | `recipe_upload_image()` | Upload recipe image |
+### Recipes (lines 1044-1250)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/` | GET | 1044 | Home page with recipe list |
+| `/recipes` | GET | 1053 | Recipe list with category filter |
+| `/recipe/<id>` | GET | 1063 | Recipe detail with cost breakdown |
+| `/recipe/add` | GET/POST | 1090 | Create new recipe |
+| `/recipe/<id>/edit` | GET/POST | 1113 | Edit recipe |
+| `/recipe/<id>/delete` | POST | 1141 | Delete recipe |
+| `/recipe/<id>/ingredient/add` | POST | 1163 | Add ingredient to recipe |
+| `/recipe/<id>/ingredient/<ri_id>/update` | POST | 1187 | Update recipe ingredient |
+| `/recipe/<id>/ingredient/<ri_id>/delete` | POST | 1207 | Delete recipe ingredient |
+| `/recipe/<id>/upload-image` | POST | 1214 | Upload recipe image |
 
-### Recipe Import (lines 1252-1571)
-| Route | Method | Function | Purpose |
-|-------|--------|----------|---------|
-| `/recipe/import` | GET/POST | `recipe_import()` | Fetch URL, extract JSON-LD |
-| `/recipe/import/preview` | POST | `recipe_import_preview()` | Review ingredient matches |
-| `/recipe/import/save` | POST | `recipe_import_save()` | Save with confirmed mappings |
+### Recipe Import (lines 1251-1675)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/recipe/import` | GET/POST | 1251 | Fetch URL, extract JSON-LD |
+| `/recipe/import/preview` | POST | 1368 | Review ingredient matches |
+| `/recipe/import/save` | POST | 1445 | Save with confirmed mappings |
 
-### Shopping List (lines 1573-1764)
-| Route | Method | Function | Purpose |
-|-------|--------|----------|---------|
-| `/shopping` | GET | `shopping_list()` | View shopping list |
-| `/shopping/add` | POST | `shopping_add()` | Add manual item |
-| `/shopping/check/<id>` | POST | `shopping_check()` | Toggle item checked |
-| `/shopping/delete/<id>` | POST | `shopping_delete()` | Remove item |
-| `/shopping/add-from-recipes` | POST | `shopping_add_from_recipes()` | Generate from recipes |
-| `/shopping/generate` | POST | `shopping_generate()` | Generate with multipliers |
+### Shopping List (lines 1676-1790)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/shopping` | GET | 1676 | View shopping list |
+| `/shopping/add` | POST | 1698 | Add manual item (source='manual') |
+| `/shopping/check/<id>` | POST | 1709 | Toggle item checked |
+| `/shopping/delete/<id>` | POST | 1716 | Remove item |
+| `/shopping/clear-checked` | POST | 1723 | Clear all checked items |
+| `/shopping/add-from-recipes` | POST | 1730 | Generate from recipes |
+| `/shopping/generate` | POST | 1755 | Generate with multipliers |
+| `/useup/add` | POST | 1771 | Add to use-up list |
+| `/useup/<id>/delete` | POST | 1781 | Remove from use-up list |
 
-### Meal Plan (lines 1788-1880)
-| Route | Method | Function | Purpose |
-|-------|--------|----------|---------|
-| `/mealplan` | GET | `meal_plan()` | View weekly meal plan |
-| `/mealplan/randomize` | POST | `meal_plan_randomize()` | Randomize unlocked meals |
-| `/mealplan/lock/<day>/<type>` | POST | `meal_plan_lock()` | Toggle meal lock |
-| `/mealplan/shopping` | POST | `shopping_from_mealplan()` | Generate shopping from plan |
+### Meal Plan (lines 1792-1885)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/mealplan` | GET | 1792 | View weekly meal plan |
+| `/mealplan/randomize` | POST | 1803 | Randomize unlocked meals |
+| `/mealplan/lock/<day>/<type>` | POST | 1845 | Toggle meal lock |
+| `/mealplan/shopping` | POST | 1853 | Generate shopping from plan |
 
-### Ingredients (lines 1882-2145)
-| Route | Method | Function | Purpose |
-|-------|--------|----------|---------|
-| `/ingredients` | GET | `ingredients_list()` | List all ingredients |
-| `/ingredient/add` | POST | `ingredient_add()` | Add new ingredient |
-| `/ingredient/<id>/edit` | POST | `ingredient_edit()` | Edit ingredient (AJAX) |
-| `/ingredient/<id>/delete` | POST | `ingredient_delete()` | Delete ingredient |
-| `/ingredients/cleanup` | POST | `ingredients_cleanup()` | Merge duplicates, remove unused |
+### Ingredients (lines 1886-2150)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/ingredients` | GET | 1886 | List all ingredients |
+| `/ingredient/add` | POST | 1915 | Add new ingredient (with validation) |
+| `/ingredient/<id>/edit` | POST | 1976 | Edit ingredient (AJAX, with validation) |
+| `/ingredient/<id>/delete` | POST | 2057 | Delete ingredient |
+| `/ingredients/cleanup` | POST | 2074 | Merge duplicates, remove unused |
 
-### Pantry (lines 2179-2284)
-| Route | Method | Function | Purpose |
-|-------|--------|----------|---------|
-| `/pantry` | GET | `pantry_list()` | View pantry staples |
-| `/pantry/add` | POST | `pantry_add()` | Add to pantry |
-| `/pantry/<id>/toggle` | POST | `pantry_toggle()` | Toggle have_it status |
-| `/pantry/<id>/delete` | POST | `pantry_delete()` | Remove from pantry |
-| `/pantry/add-common` | POST | `pantry_add_common()` | Add common staples |
+### What Can I Make (line 2151)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/whatcanmake` | GET | 2151 | Find recipes with pantry items |
 
-### Other
-| Route | Method | Function | Line | Purpose |
-|-------|--------|----------|------|---------|
-| `/whatcanmake` | GET | `what_can_make()` | 2152 | Find recipes with pantry items |
-| `/useup/add` | POST | `useup_add()` | 1772 | Add to use-up list |
-| `/migrate/data` | GET | `migrate_data()` | 2291 | Legacy data migration |
-| `/migrate/base-units` | GET | `migrate_base_units()` | 2346 | Migrate to base unit model |
+### Pantry (lines 2181-2289)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/pantry` | GET | 2181 | View pantry staples |
+| `/pantry/add` | POST | 2192 | Add to pantry |
+| `/pantry/<id>/toggle` | POST | 2214 | Toggle have_it status |
+| `/pantry/<id>/delete` | POST | 2221 | Remove from pantry |
+| `/pantry/add-from-ingredient/<id>` | POST | 2228 | Add ingredient to pantry |
+| `/shopping/<id>/add-to-pantry` | POST | 2241 | Add shopping item to pantry |
+| `/pantry/add-common` | POST | 2260 | Add common staples |
+
+### Admin (lines 2290-2445)
+| Route | Method | Line | Purpose |
+|-------|--------|------|---------|
+| `/admin/migrate` | POST | 2290 | Legacy data migration |
+| `/admin/migrate-base-units` | POST | 2345 | Migrate to base unit model |
 
 ---
 
@@ -240,7 +257,13 @@ The app uses 5 formula types to calculate ingredient costs:
 
 ## Constants (in app.py and constants/)
 
-### Unit Mappings (line 193)
+### Validation Whitelists (line 183)
+```python
+VALID_COST_FORMULAS = {'WEIGHT', 'VOLUME', 'PORTION', 'PACKAGE', 'COUNT'}
+VALID_BASE_UNITS = {'EA', 'G', 'KG', 'LB', 'OZ', 'ML', 'L', 'CUP', 'TBSP', 'TSP', 'CLOVE', 'HEAD', 'CAN'}
+```
+
+### Unit Mappings (line 205)
 ```python
 UNIT_MAPPINGS = {
     'pound': 'LB', 'cups': 'CUP', 'tablespoon': 'TBSP', 'teaspoon': 'TSP',
@@ -248,22 +271,7 @@ UNIT_MAPPINGS = {
 }
 ```
 
-### Unit Conversions (line 217)
-```python
-VOLUME_TO_ML = {'ML': 1, 'L': 1000, 'CUP': 236.588, 'TBSP': 14.787, 'TSP': 4.929}
-WEIGHT_TO_G = {'G': 1, 'KG': 1000, 'OZ': 28.3495, 'LB': 453.592}
-```
-
-### Ingredient Aliases (line 353)
-Maps alternate names to canonical names (67 aliases):
-```python
-INGREDIENT_ALIASES = {
-    'ground beef': 'Ground Beef', 'chicken breast': 'Chicken Breast',
-    'green onion': 'Green Onion', 'scallion': 'Green Onion', ...
-}
-```
-
-### Average Weights (line 233)
+### Average Weights (line 245)
 Default weights in grams for produce/proteins:
 ```python
 AVERAGE_WEIGHTS = {
@@ -271,10 +279,19 @@ AVERAGE_WEIGHTS = {
 }
 ```
 
-### Validation Whitelists (line 182)
+### Ingredient Aliases (line 365)
+Maps alternate names to canonical names (67+ aliases):
 ```python
-VALID_COST_FORMULAS = {'WEIGHT', 'VOLUME', 'PORTION', 'PACKAGE', 'COUNT'}
-VALID_BASE_UNITS = {'EA', 'G', 'KG', 'LB', 'OZ', 'ML', 'L', 'CUP', 'TBSP', 'TSP', ...}
+INGREDIENT_ALIASES = {
+    'ground beef': 'Ground Beef', 'chicken breast': 'Chicken Breast',
+    'green onion': 'Green Onion', 'scallion': 'Green Onion', ...
+}
+```
+
+### Unit Conversions (lines 480-483)
+```python
+VOLUME_TO_ML = {'ML': 1, 'L': 1000, 'CUP': 236.588, 'TBSP': 14.787, 'TSP': 4.929}
+WEIGHT_TO_G = {'G': 1, 'KG': 1000, 'OZ': 28.3495, 'LB': 453.592}
 ```
 
 ---
@@ -305,7 +322,7 @@ flask db upgrade
 ```
 
 ### Legacy Manual Migrations
-SQLite migrations are handled in `init_db()` (line 2446). New columns are added with:
+SQLite migrations are also handled in `init_db()` (line 2446) for backward compatibility. New columns can be added with:
 ```python
 try:
     conn.execute(db.text("SELECT new_column FROM table LIMIT 1"))
