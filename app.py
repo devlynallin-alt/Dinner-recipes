@@ -1339,6 +1339,21 @@ def pantry_add_from_ingredient(id):
         flash('Already in pantry', 'info')
     return redirect(url_for('ingredients_list'))
 
+@app.route('/shopping/add-from-ingredient/<int:id>', methods=['POST'])
+def shopping_add_from_ingredient(id):
+    """Add ingredient to shopping list from ingredients page"""
+    ingredient = Ingredient.query.get_or_404(id)
+    # Check if already in shopping list
+    existing = ShoppingItem.query.filter_by(name=ingredient.name).first()
+    if not existing:
+        item = ShoppingItem(name=ingredient.name, category=ingredient.category)
+        db.session.add(item)
+        db.session.commit()
+        flash(f'Added {ingredient.name} to shopping list!', 'success')
+    else:
+        flash(f'{ingredient.name} already in shopping list', 'info')
+    return redirect(url_for('ingredients_list'))
+
 @app.route('/pantry/add-common', methods=['POST'])
 def pantry_add_common():
     common_staples = [
