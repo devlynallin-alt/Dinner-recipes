@@ -239,6 +239,16 @@ COST_PER_EA = {
     'TORTILLA', 'BREAD', 'BUN', 'EGG',
 }
 
+# Minimum purchase quantities (keyword -> (min_qty, unit))
+MINIMUM_PURCHASE = {
+    'BEEF': (1, 'LB'),           # Minimum 1 LB
+    'CHICKEN': (1, 'LB'),        # Minimum 1 LB
+    'PORK': (1, 'LB'),           # Minimum 1 LB
+    'EGG': (6, 'EA'),            # Minimum 6 eggs
+    'BROTH': (1, 'L'),           # Minimum 1 L
+    'STOCK': (1, 'L'),           # Minimum 1 L
+}
+
 # Preferred units for specific ingredients (keyword -> preferred unit)
 # Liquids should be in ML, meats in G, oils in TBSP
 INGREDIENT_PREFERRED_UNITS = {
@@ -1141,10 +1151,18 @@ def generate_shopping_list(recipe_ids, multipliers=None):
         unit_cost = item['cost']
         ing_upper = key[0]
 
+        # Check for minimum purchase quantity
+        min_qty_for_cost = None
+        for min_key, (min_val, min_unit) in MINIMUM_PURCHASE.items():
+            if min_key in ing_upper:
+                min_qty_for_cost = (min_val, min_unit)
+                break
+
         # Handle canned/container items - cost is per CAN
         if size:
             cost_unit = 'CAN'
-            total_cost = round(unit_cost * qty, 2)
+            cost_qty = max(1, qty)  # Minimum 1 can
+            total_cost = round(unit_cost * cost_qty, 2)
         # Weight-based items - cost is per LB
         elif unit in ('LB', 'KG', 'G'):
             cost_unit = 'LB'
@@ -1154,14 +1172,21 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 qty_in_lb = qty / 453.592
             else:
                 qty_in_lb = qty
+            # Apply minimum (e.g., 1 LB for beef)
+            if min_qty_for_cost and min_qty_for_cost[1] == 'LB':
+                qty_in_lb = max(min_qty_for_cost[0], qty_in_lb)
             total_cost = round(unit_cost * qty_in_lb, 2)
         elif unit == 'EA':
             # Check if this item is priced per EA (not per LB)
             is_per_ea = any(ea_item in ing_upper for ea_item in COST_PER_EA)
             if is_per_ea:
-                # Cost is per EA, no conversion needed
+                # Cost is per EA - apply minimum
                 cost_unit = 'EA'
-                total_cost = round(unit_cost * qty, 2)
+                if min_qty_for_cost and min_qty_for_cost[1] == 'EA':
+                    cost_qty = max(min_qty_for_cost[0], qty)
+                else:
+                    cost_qty = max(1, qty)  # Minimum 1 EA
+                total_cost = round(unit_cost * cost_qty, 2)
             else:
                 # Check if we have average weight for this item
                 avg_weight = None
@@ -1173,11 +1198,15 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                     # Convert EA to LB using average weight
                     cost_unit = 'LB'
                     qty_in_lb = (qty * avg_weight) / 453.592
+                    # Apply minimum (e.g., 1 LB for beef)
+                    if min_qty_for_cost and min_qty_for_cost[1] == 'LB':
+                        qty_in_lb = max(min_qty_for_cost[0], qty_in_lb)
                     total_cost = round(unit_cost * qty_in_lb, 2)
                 else:
                     # No average weight, assume cost is per EA
                     cost_unit = 'EA'
-                    total_cost = round(unit_cost * qty, 2)
+                    cost_qty = max(1, qty)  # Minimum 1 EA
+                    total_cost = round(unit_cost * cost_qty, 2)
         else:
             # For volume units - cost is per L (liter)
             cost_unit = 'L'
@@ -1191,6 +1220,9 @@ def generate_shopping_list(recipe_ids, multipliers=None):
                 # TSP, TBSP - convert to L
                 qty_in_l = qty / 1000 if unit in ('TSP', 'TBSP') else qty
                 cost_unit = unit
+            # Apply minimum (e.g., 1 L for broth)
+            if min_qty_for_cost and min_qty_for_cost[1] == 'L':
+                qty_in_l = max(min_qty_for_cost[0], qty_in_l)
             total_cost = round(unit_cost * qty_in_l, 2)
 
         shopping_items.append({
