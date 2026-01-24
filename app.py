@@ -1204,8 +1204,22 @@ def shopping_from_mealplan():
         return redirect(url_for('meal_plan'))
 
     recipe_ids = {meal.recipe_id for meal in meals if meal.recipe_id}
-    items, subtotal, tax, total = generate_shopping_list(recipe_ids)
-    return render_template('shopping_result.html', items=items, subtotal=subtotal, tax=tax, total=total)
+
+    # Clear existing shopping list and add items from meal plan
+    ShoppingItem.query.delete()
+
+    items, _, _, _ = generate_shopping_list(recipe_ids)
+    for item in items:
+        qty_str = f"{item['qty']} {item['unit']}" if not item.get('size') else f"{int(item['qty'])} x {int(item['size'])}{item['unit'].lower()}"
+        shopping_item = ShoppingItem(
+            name=item['name'],
+            quantity=qty_str,
+            category=item['category']
+        )
+        db.session.add(shopping_item)
+    db.session.commit()
+    flash(f"Added {len(items)} items from meal plan", "success")
+    return redirect(url_for('shopping_list'))
 
 # ============================================
 # ROUTES - INGREDIENTS
